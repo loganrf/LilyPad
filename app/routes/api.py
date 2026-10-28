@@ -13,7 +13,7 @@ from .. import repo
 from ..reminders import snooze as snooze_reminder
 from ..summary import public_json, snapshot
 from ..timeutil import now_db, to_db
-from ..web import get_conn, load_settings, now, redirect, safe_next, state
+from ..web import EntryId, get_conn, load_settings, now, redirect, safe_next, state
 
 router = APIRouter()
 
@@ -68,7 +68,7 @@ async def _next_param(request: Request) -> str | None:
 
 
 @router.post("/api/reminders/{reminder_id}/snooze")
-async def api_snooze(reminder_id: int, request: Request, conn: sqlite3.Connection = Depends(get_conn)):
+async def api_snooze(reminder_id: EntryId, request: Request, conn: sqlite3.Connection = Depends(get_conn)):
     reminder = repo.reminder(conn, reminder_id)
     if not reminder:
         raise HTTPException(404, "No such reminder.")
@@ -85,7 +85,7 @@ async def api_snooze(reminder_id: int, request: Request, conn: sqlite3.Connectio
 
 
 @router.post("/api/alerts/{alert_id}/ack")
-async def api_ack(alert_id: int, request: Request, conn: sqlite3.Connection = Depends(get_conn)):
+async def api_ack(alert_id: EntryId, request: Request, conn: sqlite3.Connection = Depends(get_conn)):
     cur = conn.execute("UPDATE alerts SET acknowledged_at = ? WHERE id = ? AND acknowledged_at IS NULL",
                        (now_db(), alert_id))
     if cur.rowcount == 0 and not conn.execute("SELECT 1 FROM alerts WHERE id = ?", (alert_id,)).fetchone():

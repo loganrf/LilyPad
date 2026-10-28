@@ -24,8 +24,8 @@ from ..notify import NTFY_TOPIC_RE, Notification
 from ..security import hash_password
 from ..timeutil import from_db, local_day_bounds, parse_date, parse_hhmm, to_db, utcnow
 from ..web import (
-    ADMIN_COOKIE, admin_session, check_admin_password, get_conn, load_settings, now, redirect, render,
-    require_admin, require_admin_post, safe_next, set_admin_cookie, state,
+    ADMIN_COOKIE, EntryId, admin_session, check_admin_password, get_conn, load_settings, now, parse_id,
+    redirect, render, require_admin, require_admin_post, safe_next, set_admin_cookie, state,
 )
 
 router = APIRouter(prefix="/admin")
@@ -58,7 +58,7 @@ async def login(request: Request, conn: sqlite3.Connection = Depends(get_conn)):
     form = await request.form()
     next_url = safe_next(form.get("next"), "/admin")
     key = _client_key(request)
-    locked = st.throttle.locked_for(key)
+    locked = st.throttle.attempt(key)  # counts this attempt before the password is checked
     env_password = st.env_password_digest is not None
     if locked:
         return render(request, conn, "admin/login.html", 429, next_url=next_url, env_password=env_password,
@@ -67,7 +67,6 @@ async def login(request: Request, conn: sqlite3.Connection = Depends(get_conn)):
     settings = load_settings(request, conn)
     ok = isinstance(password, str) and await asyncio.to_thread(check_admin_password, request, settings, password)
     if not ok:
-        st.throttle.failure(key)
         await asyncio.sleep(0.4)
         return render(request, conn, "admin/login.html", 401, next_url=next_url, env_password=env_password,
                       error="That password didn't work.")
@@ -248,7 +247,7 @@ def vital_param_form(param_id: str, request: Request, conn: sqlite3.Connection =
     if param_id == "new":
         param = {"decimals": 1, "notify_on_alert": 1, "active": 1}
     else:
-        param = repo.vital_param(conn, int(param_id)) if param_id.isdigit() else None
+        param = repo.vital_param(conn, pid) if (pid := parse_id(param_id)) else None
         if not param:
             raise HTTPException(404, "No such parameter.")
     return render(request, conn, "admin/vital_form.html", param=param)
@@ -260,7 +259,7 @@ async def vital_param_save(param_id: str, request: Request, conn: sqlite3.Connec
     form = _form(raw)
     existing = None
     if param_id != "new":
-        existing = repo.vital_param(conn, int(param_id)) if param_id.isdigit() else None
+        existing = repo.vital_param(conn, pid) if (pid := parse_id(param_id)) else None
         if not existing:
             raise HTTPException(404, "No such parameter.")
     name = form.text("name", 60)
@@ -303,7 +302,7 @@ async def vital_param_save(param_id: str, request: Request, conn: sqlite3.Connec
 
 
 @router.post("/vitals/{param_id}/delete")
-async def vital_param_delete(param_id: int, request: Request, conn: sqlite3.Connection = Depends(get_conn)):
+async def vital_param_delete(param_id: EntryId, request: Request, conn: sqlite3.Connection = Depends(get_conn)):
     await require_admin_post(request, conn)
     used = conn.execute("SELECT COUNT(*) FROM vital_readings WHERE param_id = ?", (param_id,)).fetchone()[0]
     if used:
@@ -336,7 +335,7 @@ def reminder_form(reminder_id: str, request: Request, conn: sqlite3.Connection =
                     "window_minutes": 30, "nag_minutes": 15, "max_nags": 3, "priority": 3,
                     "notify_ntfy": 1, "notify_dash": 1, "enabled": 1, "anchor": "start"}
     else:
-        reminder = repo.reminder(conn, int(reminder_id)) if reminder_id.isdigit() else None
+        reminder = repo.reminder(conn, rid) if (rid := parse_id(reminder_id)) else None
         if not reminder:
             raise HTTPException(404, "No such reminder.")
     return render(request, conn, "admin/reminder_form.html", reminder=reminder,
@@ -362,7 +361,7 @@ async def reminder_save(reminder_id: str, request: Request, conn: sqlite3.Connec
     form = _form(raw)
     existing = None
     if reminder_id != "new":
-        existing = repo.reminder(conn, int(reminder_id)) if reminder_id.isdigit() else None
+        existing = repo.reminder(conn, rid) if (rid := parse_id(reminder_id)) else None
         if not existing:
             raise HTTPException(404, "No such reminder.")
     kind = form.choice("kind", C.REMINDER_KINDS, "a reminder type", required=True)
@@ -404,6 +403,8 @@ async def reminder_save(reminder_id: str, request: Request, conn: sqlite3.Connec
     if existing:
         conn.execute(f"UPDATE reminders SET {', '.join(c + ' = ?' for c in cols)}, updated_at = ? WHERE id = ?",
                      [values[c] for c in cols] + [ts, existing["id"]])
+        # The schedule may have changed: start the notification cycle afresh.
+        conn.execute("DELETE FROM reminder_state WHERE reminder_id = ?", (existing["id"],))
         if existing["kind"] == "custom" and values["name"] != existing["name"]:
             conn.execute("UPDATE task_logs SET task_name = ? WHERE reminder_id = ?", (values["name"], existing["id"]))
     else:
@@ -414,7 +415,7 @@ async def reminder_save(reminder_id: str, request: Request, conn: sqlite3.Connec
 
 
 @router.post("/reminders/{reminder_id}/delete")
-async def reminder_delete(reminder_id: int, request: Request, conn: sqlite3.Connection = Depends(get_conn)):
+async def reminder_delete(reminder_id: EntryId, request: Request, conn: sqlite3.Connection = Depends(get_conn)):
     await require_admin_post(request, conn)
     conn.execute("DELETE FROM reminders WHERE id = ?", (reminder_id,))
     state(request).bus.publish("changed", {"what": "reminders"})
@@ -475,7 +476,7 @@ def report(request: Request, conn: sqlite3.Connection = Depends(get_conn)):
 
 
 @router.post("/notes/{note_id}/discussed")
-async def note_discussed(note_id: int, request: Request, conn: sqlite3.Connection = Depends(get_conn)):
+async def note_discussed(note_id: EntryId, request: Request, conn: sqlite3.Connection = Depends(get_conn)):
     _, raw = await require_admin_post(request, conn)
     value = 1 if raw.get("discussed") == "1" else 0
     conn.execute("UPDATE notes SET discussed = ?, updated_at = ? WHERE id = ?", (value, to_db(utcnow()), note_id))

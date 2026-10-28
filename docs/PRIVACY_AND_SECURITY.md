@@ -66,7 +66,9 @@ Assume that **anyone who can load LilyPad in a browser** can:
    the last 24 hours of totals. Notes are free text and may contain
    anything you typed into them.
 2. **Add false entries**, e.g. log a feed that never happened, which would
-   also reset that reminder's countdown.
+   also reset that reminder's countdown. Without the password, entries can
+   only be dated inside the open window, so nobody can plant (or move)
+   entries into the older, protected history.
 3. **Change or delete recent entries.** Deletes are soft: an admin can
    restore anything from the trash for 30 days. **Edits overwrite the
    previous values; LilyPad does not keep an edit history.**
@@ -224,8 +226,12 @@ These are on by default and need no configuration:
   `Origin`/`Referer` is a different site. (Requests with no `Origin`, such
   as the ntfy app's action buttons or `curl`, are allowed; they can't
   ride on a browser session.)
-- **CSRF tokens** on every admin form, in addition to the `SameSite=Strict`
-  admin cookie.
+- **CSRF tokens** on every action that needs the admin password (including
+  editing, deleting or restoring older entries), in addition to the
+  `SameSite=Strict` admin cookie.
+- **Input bounds.** Times before 2000 or in the future, and implausibly
+  large numbers, are rejected so a single bad entry can't break the home
+  screen or reports for everyone.
 - **DNS-rebinding protection** when `LILYPAD_ALLOWED_HOSTS` is set: requests
   for unrecognised host names are refused, so a malicious site can't
   re-point its own domain at your LilyPad.

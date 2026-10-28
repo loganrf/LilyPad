@@ -14,6 +14,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.datastructures import Headers, MutableHeaders
@@ -220,6 +221,11 @@ def create_app(config: Config | None = None, notifier: Notifier | None = None) -
             return PlainTextResponse("Admin password required.", status_code=401)
         from urllib.parse import urlencode
         return RedirectResponse("/admin/login?" + urlencode({"next": exc.next_url}), status_code=303)
+
+    @app.exception_handler(RequestValidationError)
+    async def _bad_path(request: Request, exc: RequestValidationError):
+        # Only path parameters are validated by FastAPI here (e.g. ids out of range).
+        return await _http_error(request, StarletteHTTPException(404, "Not Found"))
 
     @app.exception_handler(StarletteHTTPException)
     async def _http_error(request: Request, exc: StarletteHTTPException):

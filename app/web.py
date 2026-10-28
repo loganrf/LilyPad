@@ -8,11 +8,11 @@ import hmac
 import sqlite3
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from pathlib import Path
-from typing import Any, Iterator
+from pathlib import Path as FilePath
+from typing import Annotated, Any, Iterator
 from urllib.parse import quote, urlencode
 
-from fastapi import HTTPException, Request
+from fastapi import HTTPException, Path, Request
 from fastapi.responses import RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 
@@ -32,7 +32,7 @@ from .timeutil import (
 
 ADMIN_COOKIE = "lilypad_admin"
 WHO_COOKIE = "lilypad_who"
-TEMPLATE_DIR = Path(__file__).parent / "templates"
+TEMPLATE_DIR = FilePath(__file__).parent / "templates"
 
 TOASTS = {
     "feed-started": ("Feed timer started.", "ok"),
@@ -156,24 +156,36 @@ def cookie_secure(request: Request) -> bool:
     return request.url.scheme == "https"
 
 
-def set_admin_cookie(request: Request, response: Response, settings: Settings) -> None:
+def _issue_admin_token(request: Request, settings: Settings) -> str:
     st = state(request)
-    lifetime = st.config.session_minutes * 60
-    token = st.signer.issue(current_fingerprint(request, settings), lifetime)
+    token = st.signer.issue(current_fingerprint(request, settings), st.config.session_minutes * 60)
+    # Make the rest of this request (e.g. CSRF tokens in the page) use the new session.
+    request.state.admin = st.signer.verify(token, current_fingerprint(request, settings))
+    return token
+
+
+def _write_admin_cookie(request: Request, response: Response, token: str) -> None:
     response.set_cookie(
-        ADMIN_COOKIE, token, max_age=lifetime, httponly=True, samesite="strict",
-        secure=cookie_secure(request), path="/",
+        ADMIN_COOKIE, token, max_age=state(request).config.session_minutes * 60, httponly=True,
+        samesite="strict", secure=cookie_secure(request), path="/",
     )
 
 
-def maybe_refresh_admin_cookie(request: Request, response: Response, conn: sqlite3.Connection) -> None:
-    """Sliding expiry: re-issue the cookie once half its lifetime has passed."""
+def set_admin_cookie(request: Request, response: Response, settings: Settings) -> None:
+    _write_admin_cookie(request, response, _issue_admin_token(request, settings))
+
+
+def refresh_admin_session(request: Request, conn: sqlite3.Connection) -> str | None:
+    """Sliding expiry: once half the lifetime has passed, issue a new session.
+
+    Returns the new cookie value (to be set on the response), or None.
+    """
     session = admin_session(request, conn)
     if session is None:
-        return
-    lifetime = state(request).config.session_minutes * 60
-    if session.remaining_seconds() < lifetime / 2:
-        set_admin_cookie(request, response, load_settings(request, conn))
+        return None
+    if session.remaining_seconds() >= state(request).config.session_minutes * 60 / 2:
+        return None
+    return _issue_admin_token(request, load_settings(request, conn))
 
 
 # --- visibility window -----------------------------------------------------------
@@ -182,11 +194,40 @@ def window_start(settings: Settings, now: datetime) -> str:
     return repo.window_start(now, settings.open_window_hours)
 
 
-def ensure_visible(request: Request, conn: sqlite3.Connection, entry_time: str, now: datetime) -> None:
-    """Entries older than the open window are admin-only."""
+def require_admin_csrf(request: Request, conn: sqlite3.Connection, csrf: str | None) -> AdminSession:
+    """Admin check for an open-area POST that only an admin may perform."""
+    session = require_admin(request, conn)
+    if request.method == "POST" and not state(request).signer.check_csrf(session, csrf):
+        raise HTTPException(403, "The form expired. Go back, reload the page and try again.")
+    return session
+
+
+def ensure_visible(request: Request, conn: sqlite3.Connection, entry_time: str, now: datetime,
+                   csrf: str | None = None) -> None:
+    """Entries older than the open window are admin-only (with CSRF for writes)."""
     settings = load_settings(request, conn)
     if entry_time < window_start(settings, now):
-        require_admin(request, conn)
+        require_admin_csrf(request, conn, csrf)
+
+
+def earliest_allowed(request: Request, conn: sqlite3.Connection, now: datetime) -> datetime | None:
+    """Oldest time an entry may be given from the open pages (None for admins)."""
+    if admin_session(request, conn) is not None:
+        return None
+    return now - timedelta(hours=load_settings(request, conn).open_window_hours)
+
+
+MAX_ID = 2**63 - 1
+# Path ids outside SQLite's integer range would otherwise crash the query.
+EntryId = Annotated[int, Path(ge=1, le=MAX_ID)]
+
+
+def parse_id(value: str) -> int | None:
+    """Strictly parse a numeric path segment (rejects '²', huge numbers...)."""
+    if not (value.isascii() and value.isdigit()) or len(value) > 18:
+        return None
+    number = int(value)
+    return number if 0 < number <= MAX_ID else None
 
 
 # --- templates ----------------------------------------------------------------------
@@ -194,6 +235,7 @@ def ensure_visible(request: Request, conn: sqlite3.Connection, entry_time: str, 
 templates = Jinja2Templates(directory=str(TEMPLATE_DIR))
 env = templates.env
 env.globals.update(C=C, version=__version__, timedelta=timedelta)
+env.globals["safe_next"] = lambda url, default="/": safe_next(url, default)
 env.filters["dt"] = lambda v, tz, now=None: fmt_datetime(from_db(v) if isinstance(v, str) else v, tz, now)
 env.filters["time"] = lambda v, tz: fmt_time(from_db(v) if isinstance(v, str) else v, tz)
 env.filters["ago"] = lambda v, now=None: fmt_ago(from_db(v) if isinstance(v, str) else v, now)
@@ -277,11 +319,12 @@ def base_context(request: Request, conn: sqlite3.Connection) -> dict[str, Any]:
 
 def render(request: Request, conn: sqlite3.Connection, template: str, status_code: int = 200,
            **context: Any) -> Response:
+    new_token = refresh_admin_session(request, conn)  # before the CSRF token is generated
     ctx = base_context(request, conn)
     ctx.update(context)
     response = templates.TemplateResponse(request, template, ctx, status_code=status_code)
-    if ctx["is_admin"]:
-        maybe_refresh_admin_cookie(request, response, conn)
+    if new_token:
+        _write_admin_cookie(request, response, new_token)
     return response
 
 
@@ -299,7 +342,9 @@ def redirect(url: str, toast: str | None = None, undo: tuple[str, int, str] | No
 
 def safe_next(url: str | None, default: str = "/") -> str:
     """Only allow same-site relative redirects."""
-    if not url or not url.startswith("/") or url.startswith("//") or "\\" in url:
+    if not isinstance(url, str) or not url.startswith("/") or url.startswith("//") or "\\" in url:
+        return default
+    if any(ord(c) < 33 or ord(c) == 127 for c in url):  # browsers drop tabs/newlines: "/\t/x" -> "//x"
         return default
     return url
 

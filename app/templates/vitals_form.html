@@ -3,7 +3,7 @@
 {% set is_edit = check and check.id is defined and check.id %}
 {% block title %}{{ "Edit vitals" if is_edit else "Log vitals" }} · LilyPad{% endblock %}
 {% block content %}
-{% set next = request.query_params.get("next", "/") %}
+{% set next = safe_next(request.query_params.get("next")) %}
 {% set when_value = (check.when_at or check.measured_at) if check else None %}
 <h1>{{ "Edit vitals" if is_edit else "Log vitals" }}</h1>
 {% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
@@ -13,6 +13,7 @@
 {% else %}
 <form method="post" action="{{ '/vitals/%d/edit'|format(check.id) if is_edit else '/vitals/new' }}" class="stack">
   <input type="hidden" name="next" value="{{ next }}">
+  {% if csrf %}<input type="hidden" name="csrf" value="{{ csrf }}">{% endif %}
   <p class="sub">Fill in whichever you measured; leave the rest blank.</p>
   {% for p in params %}
   {% set raw = readings.get(p.id) %}

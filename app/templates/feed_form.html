@@ -3,7 +3,7 @@
 {% set is_edit = feed.id is defined and feed.id %}
 {% block title %}{{ "Edit feed" if is_edit else "Log a feed" }} · LilyPad{% endblock %}
 {% block content %}
-{% set next = request.query_params.get("next", "/") %}
+{% set next = safe_next(request.query_params.get("next")) %}
 {% set method = feed.method or "breast" %}
 {% set start_value = feed.start_at or feed.started_at or None %}
 {% set amount_value = feed.amount if feed.amount is defined else (feed.amount_ml|volume_input(volume_unit) if feed.amount_ml else "") %}
@@ -16,6 +16,7 @@
 
 <form method="post" action="{{ '/feed/%d/edit'|format(feed.id) if is_edit else '/feed/new' }}" class="stack" data-toggle-form>
   <input type="hidden" name="next" value="{{ next }}">
+  {% if csrf %}<input type="hidden" name="csrf" value="{{ csrf }}">{% endif %}
   {{ m.radio_tiles("method", C.FEED_METHODS, method, "Type", required=True, cls="big") }}
 
   <div data-show-if="method:breast">

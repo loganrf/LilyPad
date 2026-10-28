@@ -46,6 +46,7 @@
     {% if undo %}
     <form method="post" action="/entry/{{ undo.table }}/{{ undo.id }}/{{ undo.action }}" class="inline">
       <input type="hidden" name="undo" value="1">
+      {% if csrf %}<input type="hidden" name="csrf" value="{{ csrf }}">{% endif %}
       <input type="hidden" name="next" value="{{ path }}">
       <button type="submit" class="btn small">Undo</button>
     </form>

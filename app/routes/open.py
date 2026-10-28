@@ -22,8 +22,8 @@ from ..reminders import vital_alerts
 from ..summary import is_stale_active, snapshot
 from ..timeutil import from_db, to_db
 from ..web import (
-    WHO_COOKIE, cookie_secure, ensure_visible, get_conn, load_settings, now, redirect,
-    render, require_admin, safe_next, state, who_logged, window_start,
+    WHO_COOKIE, EntryId, cookie_secure, earliest_allowed, ensure_visible, get_conn, load_settings, now,
+    redirect, render, require_admin_csrf, safe_next, state, who_logged, window_start,
 )
 
 router = APIRouter()
@@ -92,10 +92,12 @@ async def feed_start(request: Request, conn: sqlite3.Connection = Depends(get_co
 
 
 @router.post("/feed/{feed_id}/stop")
-def feed_stop(feed_id: int, request: Request, conn: sqlite3.Connection = Depends(get_conn)):
+async def feed_stop(feed_id: EntryId, request: Request, conn: sqlite3.Connection = Depends(get_conn)):
     feed = repo.get(conn, "feedings", feed_id)
     if not feed:
         raise HTTPException(404, "That feed no longer exists.")
+    form = await read_form(request)
+    ensure_visible(request, conn, feed["started_at"], now(request), form.text("csrf", 200))
     if feed["ended_at"] is None:
         repo.update(conn, "feedings", feed_id, {"ended_at": to_db(now(request))})
         changed(request, "feedings")
@@ -103,11 +105,14 @@ def feed_stop(feed_id: int, request: Request, conn: sqlite3.Connection = Depends
 
 
 @router.post("/feed/{feed_id}/side")
-async def feed_side(feed_id: int, request: Request, conn: sqlite3.Connection = Depends(get_conn)):
+async def feed_side(feed_id: EntryId, request: Request, conn: sqlite3.Connection = Depends(get_conn)):
     form = await read_form(request)
     feed = repo.get(conn, "feedings", feed_id)
+    if not feed:
+        raise HTTPException(404, "That feed no longer exists.")
+    ensure_visible(request, conn, feed["started_at"], now(request), form.text("csrf", 200))
     side = form.choice("side", C.FEED_SIDES)
-    if feed and side and feed["ended_at"] is None:
+    if side and feed["ended_at"] is None:
         repo.update(conn, "feedings", feed_id, {"side": side, "method": "breast"})
         changed(request, "feedings")
     return redirect("/")
@@ -117,7 +122,8 @@ def _feed_values(form: Form, request: Request, conn, existing: dict | None) -> d
     settings = load_settings(request, conn)
     current = now(request)
     method = form.choice("method", C.FEED_METHODS, "a feeding method", required=True)
-    started = form.when("start", settings.tz, current, "start time")
+    started = form.when("start", settings.tz, current, "start time",
+                        earliest=earliest_allowed(request, conn, current))
     duration = form.number("duration", "Duration", 0, MAX_FEED_MINUTES)
     amount = form.number("amount", "Amount", 0, MAX_AMOUNT_ML if settings.volume_unit == "ml" else 35)
     if amount is not None and settings.volume_unit == "oz":
@@ -174,7 +180,7 @@ async def feed_create(request: Request, conn: sqlite3.Connection = Depends(get_c
 
 
 @router.get("/feed/{feed_id}/edit")
-def feed_edit(feed_id: int, request: Request, conn: sqlite3.Connection = Depends(get_conn)):
+def feed_edit(feed_id: EntryId, request: Request, conn: sqlite3.Connection = Depends(get_conn)):
     feed = repo.get(conn, "feedings", feed_id)
     if not feed:
         raise HTTPException(404, "That feed no longer exists.")
@@ -183,12 +189,12 @@ def feed_edit(feed_id: int, request: Request, conn: sqlite3.Connection = Depends
 
 
 @router.post("/feed/{feed_id}/edit")
-async def feed_update(feed_id: int, request: Request, conn: sqlite3.Connection = Depends(get_conn)):
+async def feed_update(feed_id: EntryId, request: Request, conn: sqlite3.Connection = Depends(get_conn)):
     feed = repo.get(conn, "feedings", feed_id)
     if not feed:
         raise HTTPException(404, "That feed no longer exists.")
-    ensure_visible(request, conn, feed["started_at"], now(request))
     form = await read_form(request)
+    ensure_visible(request, conn, feed["started_at"], now(request), form.text("csrf", 200))
     try:
         values = _feed_values(form, request, conn, feed)
     except FormError as exc:
@@ -214,7 +220,8 @@ async def diaper_quick(request: Request, conn: sqlite3.Connection = Depends(get_
 def _diaper_values(form: Form, request, conn) -> dict:
     settings = load_settings(request, conn)
     kind = form.choice("kind", C.DIAPER_KINDS, "what was in the diaper", required=True)
-    when = form.when("when", settings.tz, now(request), "time")
+    when = form.when("when", settings.tz, now(request), "time",
+                     earliest=earliest_allowed(request, conn, now(request)))
     dirty = kind in C.DIRTY_KINDS
     values = {
         "occurred_at": to_db(when) if when else None,
@@ -248,7 +255,7 @@ async def diaper_create(request: Request, conn: sqlite3.Connection = Depends(get
 
 
 @router.get("/diaper/{diaper_id}/edit")
-def diaper_edit(diaper_id: int, request: Request, conn: sqlite3.Connection = Depends(get_conn)):
+def diaper_edit(diaper_id: EntryId, request: Request, conn: sqlite3.Connection = Depends(get_conn)):
     diaper = repo.get(conn, "diapers", diaper_id)
     if not diaper:
         raise HTTPException(404, "That diaper entry no longer exists.")
@@ -257,12 +264,12 @@ def diaper_edit(diaper_id: int, request: Request, conn: sqlite3.Connection = Dep
 
 
 @router.post("/diaper/{diaper_id}/edit")
-async def diaper_update(diaper_id: int, request: Request, conn: sqlite3.Connection = Depends(get_conn)):
+async def diaper_update(diaper_id: EntryId, request: Request, conn: sqlite3.Connection = Depends(get_conn)):
     diaper = repo.get(conn, "diapers", diaper_id)
     if not diaper:
         raise HTTPException(404, "That diaper entry no longer exists.")
-    ensure_visible(request, conn, diaper["occurred_at"], now(request))
     form = await read_form(request)
+    ensure_visible(request, conn, diaper["occurred_at"], now(request), form.text("csrf", 200))
     try:
         values = _diaper_values(form, request, conn)
     except FormError as exc:
@@ -315,7 +322,8 @@ async def vitals_create(request: Request, conn: sqlite3.Connection = Depends(get
     form = await read_form(request)
     params = repo.vital_params(conn)
     values = _vital_values(form, params)
-    when = form.when("when", settings.tz, now(request), "time")
+    when = form.when("when", settings.tz, now(request), "time",
+                     earliest=earliest_allowed(request, conn, now(request)))
     if not values and not form.errors:
         form.error("Enter at least one reading.")
     if form.errors:
@@ -334,7 +342,7 @@ async def vitals_create(request: Request, conn: sqlite3.Connection = Depends(get
 
 
 @router.get("/vitals/{check_id}/edit")
-def vitals_edit(check_id: int, request: Request, conn: sqlite3.Connection = Depends(get_conn)):
+def vitals_edit(check_id: EntryId, request: Request, conn: sqlite3.Connection = Depends(get_conn)):
     check = repo.get(conn, "vital_checks", check_id)
     if not check:
         raise HTTPException(404, "That vitals check no longer exists.")
@@ -344,17 +352,18 @@ def vitals_edit(check_id: int, request: Request, conn: sqlite3.Connection = Depe
 
 
 @router.post("/vitals/{check_id}/edit")
-async def vitals_update(check_id: int, request: Request, conn: sqlite3.Connection = Depends(get_conn)):
+async def vitals_update(check_id: EntryId, request: Request, conn: sqlite3.Connection = Depends(get_conn)):
     settings = load_settings(request, conn)
     check = repo.get(conn, "vital_checks", check_id)
     if not check:
         raise HTTPException(404, "That vitals check no longer exists.")
-    ensure_visible(request, conn, check["measured_at"], now(request))
     form = await read_form(request)
+    ensure_visible(request, conn, check["measured_at"], now(request), form.text("csrf", 200))
     existing = {r["param_id"] for r in repo.readings_for_check(conn, check_id)}
     params = [p for p in repo.vital_params(conn, active_only=False) if p["active"] or p["id"] in existing]
     values = _vital_values(form, params)
-    when = form.when("when", settings.tz, now(request), "time")
+    when = form.when("when", settings.tz, now(request), "time",
+                     earliest=earliest_allowed(request, conn, now(request)))
     if not values and not form.errors:
         form.error("Enter at least one reading (or delete the check).")
     if form.errors:
@@ -380,7 +389,8 @@ def _note_values(form: Form, request, conn) -> dict:
     body = form.text("body", 10000)
     if not body:
         form.error("Write something in the note.")
-    when = form.when("when", settings.tz, now(request), "time")
+    when = form.when("when", settings.tz, now(request), "time",
+                     earliest=earliest_allowed(request, conn, now(request)))
     form.raise_if_errors()
     return {
         "occurred_at": to_db(when),
@@ -413,7 +423,7 @@ async def note_create(request: Request, conn: sqlite3.Connection = Depends(get_c
 
 
 @router.get("/note/{note_id}/edit")
-def note_edit(note_id: int, request: Request, conn: sqlite3.Connection = Depends(get_conn)):
+def note_edit(note_id: EntryId, request: Request, conn: sqlite3.Connection = Depends(get_conn)):
     note = repo.get(conn, "notes", note_id)
     if not note:
         raise HTTPException(404, "That note no longer exists.")
@@ -422,12 +432,12 @@ def note_edit(note_id: int, request: Request, conn: sqlite3.Connection = Depends
 
 
 @router.post("/note/{note_id}/edit")
-async def note_update(note_id: int, request: Request, conn: sqlite3.Connection = Depends(get_conn)):
+async def note_update(note_id: EntryId, request: Request, conn: sqlite3.Connection = Depends(get_conn)):
     note = repo.get(conn, "notes", note_id)
     if not note:
         raise HTTPException(404, "That note no longer exists.")
-    ensure_visible(request, conn, note["occurred_at"], now(request))
     form = await read_form(request)
+    ensure_visible(request, conn, note["occurred_at"], now(request), form.text("csrf", 200))
     try:
         values = _note_values(form, request, conn)
     except FormError as exc:
@@ -441,7 +451,7 @@ async def note_update(note_id: int, request: Request, conn: sqlite3.Connection =
 # --- custom routines -------------------------------------------------------------------------
 
 @router.post("/task/{reminder_id}/done")
-def task_done(reminder_id: int, request: Request, conn: sqlite3.Connection = Depends(get_conn)):
+def task_done(reminder_id: EntryId, request: Request, conn: sqlite3.Connection = Depends(get_conn)):
     reminder = repo.reminder(conn, reminder_id)
     if not reminder or reminder["kind"] != "custom":
         raise HTTPException(404, "That routine no longer exists.")
@@ -454,7 +464,7 @@ def task_done(reminder_id: int, request: Request, conn: sqlite3.Connection = Dep
 
 
 @router.get("/task/{log_id}/edit")
-def task_edit(log_id: int, request: Request, conn: sqlite3.Connection = Depends(get_conn)):
+def task_edit(log_id: EntryId, request: Request, conn: sqlite3.Connection = Depends(get_conn)):
     task = repo.get(conn, "task_logs", log_id)
     if not task:
         raise HTTPException(404, "That entry no longer exists.")
@@ -463,14 +473,15 @@ def task_edit(log_id: int, request: Request, conn: sqlite3.Connection = Depends(
 
 
 @router.post("/task/{log_id}/edit")
-async def task_update(log_id: int, request: Request, conn: sqlite3.Connection = Depends(get_conn)):
+async def task_update(log_id: EntryId, request: Request, conn: sqlite3.Connection = Depends(get_conn)):
     settings = load_settings(request, conn)
     task = repo.get(conn, "task_logs", log_id)
     if not task:
         raise HTTPException(404, "That entry no longer exists.")
-    ensure_visible(request, conn, task["done_at"], now(request))
     form = await read_form(request)
-    when = form.when("when", settings.tz, now(request), "time")
+    ensure_visible(request, conn, task["done_at"], now(request), form.text("csrf", 200))
+    when = form.when("when", settings.tz, now(request), "time",
+                     earliest=earliest_allowed(request, conn, now(request)))
     if form.errors:
         return render(request, conn, "task_form.html", 400, task={**task, **dict(form.data)},
                       error=" ".join(form.errors))
@@ -485,7 +496,7 @@ async def task_update(log_id: int, request: Request, conn: sqlite3.Connection = 
 # --- delete / restore -------------------------------------------------------------------------
 
 @router.post("/entry/{table}/{entry_id}/delete")
-async def entry_delete(table: str, entry_id: int, request: Request, conn: sqlite3.Connection = Depends(get_conn)):
+async def entry_delete(table: str, entry_id: EntryId, request: Request, conn: sqlite3.Connection = Depends(get_conn)):
     if table not in repo.ENTITIES:
         raise HTTPException(404)
     row = repo.get(conn, table, entry_id)
@@ -493,7 +504,7 @@ async def entry_delete(table: str, entry_id: int, request: Request, conn: sqlite
     back = safe_next(form.text("next", 300), "/")
     if not row:
         return redirect(back)
-    ensure_visible(request, conn, row[repo.entity(table).time_col], now(request))
+    ensure_visible(request, conn, row[repo.entity(table).time_col], now(request), form.text("csrf", 200))
     repo.soft_delete(conn, table, entry_id)
     changed(request, table)
     toast = "undone" if form.flag("undo") else "deleted"
@@ -501,7 +512,7 @@ async def entry_delete(table: str, entry_id: int, request: Request, conn: sqlite
 
 
 @router.post("/entry/{table}/{entry_id}/restore")
-async def entry_restore(table: str, entry_id: int, request: Request, conn: sqlite3.Connection = Depends(get_conn)):
+async def entry_restore(table: str, entry_id: EntryId, request: Request, conn: sqlite3.Connection = Depends(get_conn)):
     if table not in repo.ENTITIES:
         raise HTTPException(404)
     row = repo.get(conn, table, entry_id, include_deleted=True)
@@ -511,8 +522,8 @@ async def entry_restore(table: str, entry_id: int, request: Request, conn: sqlit
         return redirect(back)
     deleted = from_db(row["deleted_at"])
     if deleted is None or now(request) - deleted > timedelta(minutes=UNDO_RESTORE_MINUTES):
-        require_admin(request, conn)
-    ensure_visible(request, conn, row[repo.entity(table).time_col], now(request))
+        require_admin_csrf(request, conn, form.text("csrf", 200))
+    ensure_visible(request, conn, row[repo.entity(table).time_col], now(request), form.text("csrf", 200))
     repo.restore(conn, table, entry_id)
     changed(request, table)
     return redirect(back, "restored")

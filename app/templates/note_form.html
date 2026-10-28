@@ -3,13 +3,14 @@
 {% set is_edit = note.id is defined and note.id %}
 {% block title %}{{ "Edit note" if is_edit else "Add a note" }} · LilyPad{% endblock %}
 {% block content %}
-{% set next = request.query_params.get("next", "/") %}
+{% set next = safe_next(request.query_params.get("next")) %}
 {% set when_value = note.when_at or note.occurred_at or None %}
 <h1>{{ "Edit note" if is_edit else "Add a note" }}</h1>
 {% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
 
 <form method="post" action="{{ '/note/%d/edit'|format(note.id) if is_edit else '/note/new' }}" class="stack">
   <input type="hidden" name="next" value="{{ next }}">
+  {% if csrf %}<input type="hidden" name="csrf" value="{{ csrf }}">{% endif %}
   <label class="field">
     <span class="label">Note</span>
     <textarea name="body" rows="6" maxlength="10000" required autofocus placeholder="What did you notice? Rash on left cheek, unusual crying after feeds, a question to ask...">{{ note.body or "" }}</textarea>

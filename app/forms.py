@@ -13,6 +13,11 @@ from zoneinfo import ZoneInfo
 from .timeutil import parse_local_input
 
 
+# No measurement LilyPad stores comes anywhere near this; it keeps charts and
+# arithmetic well-behaved whatever gets typed in.
+MAX_MAGNITUDE = 1e6
+
+
 class FormError(ValueError):
     pass
 
@@ -69,6 +74,9 @@ class Form:
         if value != value or value in (float("inf"), float("-inf")):
             self.error(f"{label or name} must be a number.")
             return None
+        if abs(value) > MAX_MAGNITUDE:
+            self.error(f"{label or name} is too large.")
+            return None
         if minimum is not None and value < minimum:
             self.error(f"{label or name} must be at least {minimum:g}.")
             return None
@@ -91,8 +99,12 @@ class Form:
         return self.text(name, 10).lower() in ("1", "on", "true", "yes")
 
     def when(self, prefix: str, tz: ZoneInfo, now: datetime, label: str = "time",
-             required: bool = True) -> datetime | None:
-        """Read a when-picker: ``<prefix>_ago`` chips or ``<prefix>_at`` datetime."""
+             required: bool = True, earliest: datetime | None = None) -> datetime | None:
+        """Read a when-picker: ``<prefix>_ago`` chips or ``<prefix>_at`` datetime.
+
+        ``earliest`` stops password-free pages from back-dating entries into
+        the admin-only history.
+        """
         ago = self.text(f"{prefix}_ago", 10)
         at = self.text(f"{prefix}_at", 30)
         if at and ago in ("", "custom"):
@@ -101,6 +113,10 @@ class Form:
                 self.error(f"Couldn't read the {label}.")
             elif value > now + timedelta(minutes=5):
                 self.error(f"The {label} is in the future.")
+                return None
+            elif earliest is not None and value < earliest:
+                self.error(f"The {label} is older than the open window. Unlock the admin area to "
+                           "log or move entries that far back.")
                 return None
             return value
         if ago and ago != "custom":

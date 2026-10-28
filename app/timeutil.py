@@ -19,10 +19,16 @@ def utcnow() -> datetime:
     return datetime.now(UTC).replace(microsecond=0)
 
 
+# Entries can't predate this; it keeps stored strings 4-digit-year and sortable.
+EARLIEST = datetime(2000, 1, 1, tzinfo=UTC)
+
+
 def to_db(dt: datetime) -> str:
     if dt.tzinfo is None:
         raise ValueError("naive datetime passed to to_db")
-    return dt.astimezone(UTC).strftime(FMT)
+    u = dt.astimezone(UTC)
+    # strftime("%Y") doesn't zero-pad years < 1000 on all platforms.
+    return f"{u.year:04d}-{u.month:02d}-{u.day:02d}T{u.hour:02d}:{u.minute:02d}:{u.second:02d}Z"
 
 
 def from_db(value: str | None) -> datetime | None:
@@ -55,7 +61,11 @@ def parse_local_input(value: str, tz: ZoneInfo) -> datetime | None:
             continue
     else:
         return None
-    return naive.replace(tzinfo=tz).astimezone(UTC).replace(microsecond=0)
+    try:
+        value = naive.replace(tzinfo=tz).astimezone(UTC).replace(microsecond=0)
+    except (OverflowError, ValueError):
+        return None
+    return value if value >= EARLIEST else None
 
 
 def to_local_input(value: str | datetime | None, tz: ZoneInfo) -> str:

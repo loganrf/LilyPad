@@ -3,13 +3,14 @@
 {% set is_edit = diaper.id is defined and diaper.id %}
 {% block title %}{{ "Edit diaper" if is_edit else "Log a diaper" }} · LilyPad{% endblock %}
 {% block content %}
-{% set next = request.query_params.get("next", "/") %}
+{% set next = safe_next(request.query_params.get("next")) %}
 {% set when_value = diaper.when_at or diaper.occurred_at or None %}
 <h1>{{ "Edit diaper" if is_edit else "Log a diaper" }}</h1>
 {% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
 
 <form method="post" action="{{ '/diaper/%d/edit'|format(diaper.id) if is_edit else '/diaper/new' }}" class="stack" data-toggle-form>
   <input type="hidden" name="next" value="{{ next }}">
+  {% if csrf %}<input type="hidden" name="csrf" value="{{ csrf }}">{% endif %}
   {{ m.radio_tiles("kind", C.DIAPER_KINDS, diaper.kind, "What was in it?", required=True, cls="big") }}
 
   <div data-show-if="kind:dirty,mixed">

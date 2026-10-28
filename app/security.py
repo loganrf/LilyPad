@@ -99,9 +99,9 @@ class SessionSigner:
         except (ValueError, AttributeError):
             return None
         payload = f"{version}.{issued}.{expires}.{nonce}.{fingerprint}"
-        if version != "v1" or not hmac.compare_digest(sig, self._sig(payload)):
+        if version != "v1" or not _same(sig, self._sig(payload)):
             return None
-        if not hmac.compare_digest(fingerprint, password_fingerprint):
+        if not _same(fingerprint, password_fingerprint):
             return None
         try:
             session = AdminSession(int(issued), int(expires), nonce)
@@ -115,7 +115,12 @@ class SessionSigner:
         return self._sig(f"csrf.{session.issued_at}.{session.nonce}")
 
     def check_csrf(self, session: AdminSession, token: str | None) -> bool:
-        return bool(token) and hmac.compare_digest(token, self.csrf_token(session))
+        return isinstance(token, str) and bool(token) and _same(token, self.csrf_token(session))
+
+
+def _same(a: str, b: str) -> bool:
+    """Constant-time string comparison that tolerates non-ASCII input."""
+    return hmac.compare_digest(a.encode("utf-8", "surrogatepass"), b.encode("utf-8", "surrogatepass"))
 
 
 def password_fingerprint(password_hash: str) -> str:
@@ -145,18 +150,38 @@ class LoginThrottle:
                 return 0
             return max(0, int(locked_until - now + 0.999))
 
+    def attempt(self, key: str, now: float | None = None) -> int:
+        """Atomically check the lock and count this attempt.
+
+        Returns seconds remaining if locked (attempt refused), else 0. Counting
+        before the password is checked stops a burst of parallel requests from
+        all slipping past the lockout. Call ``success`` if the password was right.
+        """
+        now = now or time.time()
+        with self._lock:
+            fails, locked_until, last = self._state.get(key, (0, 0.0, 0.0))
+            if now - last > self.FORGET_AFTER_SECONDS:
+                fails, locked_until = 0, 0.0
+            if locked_until > now:
+                return max(1, int(locked_until - now + 0.999))
+            self._record_failure(key, fails, now)
+            return 0
+
     def failure(self, key: str, now: float | None = None) -> None:
         now = now or time.time()
         with self._lock:
             fails, _, last = self._state.get(key, (0, 0.0, 0.0))
             if now - last > self.FORGET_AFTER_SECONDS:
                 fails = 0
-            fails += 1
-            locked_until = 0.0
-            if fails >= self.FREE_ATTEMPTS:
-                exponent = fails - self.FREE_ATTEMPTS
-                locked_until = now + min(self.MAX_LOCK_SECONDS, self.BASE_LOCK_SECONDS * 2**exponent)
-            self._state[key] = (fails, locked_until, now)
+            self._record_failure(key, fails, now)
+
+    def _record_failure(self, key: str, previous_fails: int, now: float) -> None:
+        fails = previous_fails + 1
+        locked_until = 0.0
+        if fails >= self.FREE_ATTEMPTS:
+            exponent = fails - self.FREE_ATTEMPTS
+            locked_until = now + min(self.MAX_LOCK_SECONDS, self.BASE_LOCK_SECONDS * 2**exponent)
+        self._state[key] = (fails, locked_until, now)
 
     def success(self, key: str) -> None:
         with self._lock:
@@ -165,17 +190,28 @@ class LoginThrottle:
 
 # --- request origin / host checks -----------------------------------------------
 
+def split_host_port(netloc: str) -> tuple[str, str | None]:
+    """'Example.com:8080' -> ('example.com', '8080'); '[fd00::5]:80' -> ('fd00::5', '80')."""
+    netloc = netloc.strip().lower()
+    if netloc.startswith("["):
+        host, _, rest = netloc[1:].partition("]")
+        port = rest[1:] if rest.startswith(":") and rest[1:] else None
+        return host, port
+    if netloc.count(":") == 1:
+        host, port = netloc.split(":")
+        return host, port or None
+    return netloc, None  # bare hostname, or an unbracketed IPv6 literal
+
+
 def host_allowed(host_header: str, allowed: list[str]) -> bool:
     if "*" in allowed:
         return True
-    host = _strip_port(host_header.lower())
-    return any(fnmatch(host, pattern.lower()) for pattern in allowed)
-
-
-def _strip_port(host: str) -> str:
-    if host.startswith("["):  # IPv6 literal
-        return host.split("]")[0] + "]"
-    return host.rsplit(":", 1)[0] if host.count(":") == 1 else host
+    host, _ = split_host_port(host_header)
+    for pattern in allowed:
+        pattern = pattern.strip().lower().strip("[]")
+        if ("*" in pattern and fnmatch(host, pattern)) or host == pattern:
+            return True
+    return False
 
 
 def origin_allowed(origin: str, request_hosts: list[str], extra_origins: list[str]) -> bool:
@@ -185,24 +221,16 @@ def origin_allowed(origin: str, request_hosts: list[str], extra_origins: list[st
     normalized = origin.rstrip("/").lower()
     if normalized in (o.rstrip("/").lower() for o in extra_origins):
         return True
-    netloc = urlsplit(normalized).netloc
-    if not netloc:
+    parts = urlsplit(normalized)
+    if not parts.netloc or parts.scheme not in ("http", "https"):
         return False
-    for host in request_hosts:
-        host = host.strip().lower()
-        if not host:
+    default = {"http": "80", "https": "443"}[parts.scheme]
+    o_host, o_port = split_host_port(parts.netloc)
+    o_port = o_port or default
+    for candidate in request_hosts:
+        if not candidate or not candidate.strip():
             continue
-        if netloc == host:
-            return True
-        if _strip_port(netloc) == _strip_port(host) and _default_port_match(normalized, netloc, host):
+        h_host, h_port = split_host_port(candidate)
+        if o_host == h_host and o_port == (h_port or default):
             return True
     return False
-
-
-def _default_port_match(origin: str, origin_netloc: str, host: str) -> bool:
-    # "https://example.com" vs Host "example.com:443" and similar.
-    scheme = urlsplit(origin).scheme
-    default = {"http": "80", "https": "443"}.get(scheme)
-    o_port = origin_netloc.rsplit(":", 1)[1] if origin_netloc.count(":") == 1 else default
-    h_port = host.rsplit(":", 1)[1] if host.count(":") == 1 else default
-    return o_port == h_port

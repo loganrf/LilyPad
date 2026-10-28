@@ -269,20 +269,21 @@ def strip_chart(days: list[DayStats]) -> Markup:
 
 
 def _nice_bounds(lo: float, hi: float) -> tuple[float, float, list[float]]:
-    if lo == hi:
-        lo, hi = lo - 1, hi + 1
-    span = hi - lo
-    raw_step = span / 4
+    """Round axis bounds and ~5 evenly spaced ticks. Never loops unboundedly."""
+    if not (math.isfinite(lo) and math.isfinite(hi)):
+        return 0.0, 1.0, [0.0, 1.0]
+    if hi - lo <= max(abs(lo), abs(hi)) * 1e-9:
+        pad = max(1.0, abs(hi) * 0.05)
+        lo, hi = lo - pad, hi + pad
+    raw_step = (hi - lo) / 4
     magnitude = 10 ** math.floor(math.log10(raw_step))
     step = next(m * magnitude for m in (1, 2, 2.5, 5, 10) if m * magnitude >= raw_step)
-    start = (lo // step) * step
-    end = -((-hi) // step) * step
-    ticks = []
-    t = start
-    while t <= end + step / 1000:
-        ticks.append(round(t, 6))
-        t += step
-    return start, end, ticks
+    start = math.floor(lo / step) * step
+    end = math.ceil(hi / step) * step
+    count = int(round((end - start) / step))
+    if not 1 <= count <= 20:
+        return lo, hi, [lo, hi]
+    return start, end, [round(start + i * step, 6) for i in range(count + 1)]
 
 
 def vitals_chart(param: dict, readings: list[dict], since: str, until: str, tz) -> Markup:
