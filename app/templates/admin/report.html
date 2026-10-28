@@ -34,6 +34,7 @@
     <div class="stat"><span class="v">{{ "%.1f"|format(t.wet_per_day) }}</span><span class="l">wet / day</span></div>
     <div class="stat"><span class="v">{{ "%.1f"|format(t.dirty_per_day) }}</span><span class="l">dirty / day</span></div>
   </div>
+  {% if r.tracked_days < r.n_days %}<p class="sub">Daily averages cover the {{ r.tracked_days }} day{{ "s" if r.tracked_days != 1 }} since records begin ({{ r.tracked_start.strftime("%b") }} {{ r.tracked_start.day }}).</p>{% endif %}
   {% if t.longest %}<p class="sub">Longest gap between feed starts: {{ t.longest.minutes|duration }}, from {{ t.longest.from|dt(tz, now) }} to {{ t.longest.to|dt(tz, now) }}.</p>{% endif %}
 </section>
 

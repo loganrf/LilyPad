@@ -28,7 +28,8 @@ body.attention .dash-alert.overdue, body.attention .dash-alert.critical { animat
 @keyframes pulse { 50% { box-shadow: 0 0 0 6px var(--alert-bg); } }
 @media (prefers-reduced-motion: reduce) { body.attention .dash-alert { animation: none; } }
 
-.dash-grid {
+main.dash-grid {
+  max-width: none; margin: 0; width: 100%;
   flex: 1; display: grid; gap: 14px; padding: 0 20px 14px;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); align-content: start;
 }

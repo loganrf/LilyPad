@@ -171,19 +171,26 @@ def build(conn: sqlite3.Connection, settings: Settings, start: date, end: date, 
     day_list = list(days.values())
     n_days = len(day_list)
     total_feeds = sum(s.feeds for s in day_list)
+    # Average over days since tracking began, so a range that starts before
+    # the first entry doesn't dilute the per-day figures.
+    first = first_entry_day(conn, tz)
+    tracked_start = max(start, first) if first else start
+    tracked_days = max(1, (end - tracked_start).days + 1) if first and first <= end else n_days
     return {
         "start": start,
         "end": end,
         "n_days": n_days,
+        "tracked_days": tracked_days,
+        "tracked_start": tracked_start,
         "days": day_list,
         "totals": {
             "feeds": total_feeds,
-            "feeds_per_day": total_feeds / n_days if n_days else 0,
-            "feed_minutes_per_day": sum(s.feed_minutes for s in day_list) / n_days if n_days else 0,
+            "feeds_per_day": total_feeds / tracked_days,
+            "feed_minutes_per_day": sum(s.feed_minutes for s in day_list) / tracked_days,
             "avg_feed_minutes": (sum(s.feed_minutes for s in day_list) / total_feeds) if total_feeds else None,
-            "bottle_ml_per_day": sum(s.bottle_ml for s in day_list) / n_days if n_days else 0,
-            "wet_per_day": sum(s.wet for s in day_list) / n_days if n_days else 0,
-            "dirty_per_day": sum(s.dirty for s in day_list) / n_days if n_days else 0,
+            "bottle_ml_per_day": sum(s.bottle_ml for s in day_list) / tracked_days,
+            "wet_per_day": sum(s.wet for s in day_list) / tracked_days,
+            "dirty_per_day": sum(s.dirty for s in day_list) / tracked_days,
             "avg_interval": mean(intervals) if intervals else None,
             "min_interval": min(intervals) if intervals else None,
             "longest": longest,
@@ -204,6 +211,15 @@ def build(conn: sqlite3.Connection, settings: Settings, start: date, end: date, 
     }
 
 
+def first_entry_day(conn: sqlite3.Connection, tz) -> date | None:
+    firsts = []
+    for table in repo.ENTITIES.values():
+        row = conn.execute(f"SELECT MIN({table.time_col}) FROM {table.table} WHERE deleted_at IS NULL").fetchone()
+        if row and row[0]:
+            firsts.append(row[0])
+    return from_db(min(firsts)).astimezone(tz).date() if firsts else None
+
+
 # --- SVG charts ----------------------------------------------------------------------
 
 def _tip(text: str) -> str:
@@ -216,7 +232,7 @@ def strip_chart(days: list[DayStats]) -> Markup:
         return Markup("")
     left, right, top = 92, 12, 26
     width = 760
-    row_h = 30
+    row_h = 36
     plot_w = width - left - right
     height = top + row_h * len(days) + 8
     x = lambda minute: left + plot_w * (minute / 1440)
@@ -235,19 +251,18 @@ def strip_chart(days: list[DayStats]) -> Markup:
         for start_min, end_min, method, tip in stats.feed_spans:
             x1, x2 = x(start_min), x(end_min)
             w = max(3.0, x2 - x1)
-            out.append(f'<rect class="mark feed feed-{escape(method)}" x="{x1:.1f}" y="{y0 + 5}" width="{w:.1f}" '
+            out.append(f'<rect class="mark feed feed-{escape(method)}" x="{x1:.1f}" y="{y0 + 4}" width="{w:.1f}" '
                        f'height="12" rx="2" tabindex="0" data-tip="{escape(tip)}">{_tip(tip)}</rect>')
         for minute, kind, tip in stats.diaper_marks:
             cx = x(minute)
             if kind in C.WET_KINDS:
-                out.append(f'<circle class="mark wet" cx="{cx:.1f}" cy="{y0 + 23}" r="4" tabindex="0" '
+                out.append(f'<circle class="mark wet" cx="{cx:.1f}" cy="{y0 + 22}" r="4" tabindex="0" '
                            f'data-tip="{escape(tip)}">{_tip(tip)}</circle>')
             if kind in C.DIRTY_KINDS:
-                off = 5 if kind == "mixed" else 0
-                out.append(f'<rect class="mark dirty" x="{cx - 4 + off:.1f}" y="{y0 + 19}" width="8" height="8" '
+                out.append(f'<rect class="mark dirty" x="{cx - 4:.1f}" y="{y0 + 27}" width="8" height="8" '
                            f'rx="1.5" tabindex="0" data-tip="{escape(tip)}">{_tip(tip)}</rect>')
             if kind == "dry":
-                out.append(f'<circle class="mark dry" cx="{cx:.1f}" cy="{y0 + 23}" r="3.5" tabindex="0" '
+                out.append(f'<circle class="mark dry" cx="{cx:.1f}" cy="{y0 + 22}" r="3.5" tabindex="0" '
                            f'data-tip="{escape(tip)}">{_tip(tip)}</circle>')
     out.append("</svg>")
     return Markup("".join(out))
@@ -304,7 +319,7 @@ def vitals_chart(param: dict, readings: list[dict], since: str, until: str, tz) 
         if v is not None and lo <= v <= hi:
             y = ys(v)
             out.append(f'<line class="limit" x1="{left}" y1="{y:.1f}" x2="{width - right}" y2="{y:.1f}"/>')
-            out.append(f'<text class="limit-label" x="{width - right - 4}" y="{y - 4:.1f}" text-anchor="end">'
+            out.append(f'<text class="limit-label" x="{left + 6}" y="{y - 4:.1f}" text-anchor="start">'
                        f'{label} {escape(format_value(v, param))}</text>')
     # Day ticks along the x axis (at most ~8 labels).
     days = max(1, round(total / 86400))

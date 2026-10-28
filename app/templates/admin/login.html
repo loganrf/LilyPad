@@ -20,8 +20,8 @@
   {% else %}
   <p>On first start LilyPad generated a password, printed it in the container log and saved it to <code>INITIAL_ADMIN_PASSWORD.txt</code> in the data volume:</p>
   <pre>docker compose logs lilypad | grep -i password
-cat ./data/INITIAL_ADMIN_PASSWORD.txt</pre>
-  <p>To reset it, set <code>LILYPAD_ADMIN_PASSWORD</code> in <code>docker-compose.yml</code> and restart. See the README.</p>
+docker compose exec lilypad cat /data/INITIAL_ADMIN_PASSWORD.txt</pre>
+  <p>To reset it: <code>docker compose exec lilypad python -m app.cli reset-password</code> (prints a new one). See the README.</p>
   {% endif %}
 </details>
 </div>

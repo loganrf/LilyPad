@@ -22,7 +22,7 @@
     <li><a class="btn" href="/admin/export/backup.json">Download JSON backup</a> — every entry, vital definition, reminder and the notification log. <strong>Excludes</strong> the admin password hash, signing key and ntfy/webhook credentials.</li>
     <li><a class="btn" href="/admin/export/lilypad.sqlite3">Download database file</a> — an exact, consistent copy of the SQLite database. <strong>Includes</strong> the hashed admin password and any stored ntfy/webhook credentials; store it like a password.</li>
   </ul>
-  <p class="hint">To restore, stop the container and replace <code>lilypad.sqlite3</code> in the data volume with the downloaded file (see the README).</p>
+  <p class="hint">To restore a database file: <code>docker compose stop lilypad</code>, then <code>docker compose run --rm -T lilypad python -m app.cli restore &lt; lilypad-….sqlite3</code>, then <code>docker compose start lilypad</code>. See the README.</p>
 </section>
 <p class="fineprint">Exports contain your baby's health information. Keep downloaded files somewhere private.</p>
 {% endblock %}

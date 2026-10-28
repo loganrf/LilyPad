@@ -456,6 +456,16 @@ input::placeholder, textarea::placeholder { color: var(--muted); }
   a { color: inherit; text-decoration: none; }
 }
 
+@media (max-width: 559px) {
+  .topbar { flex-wrap: wrap; row-gap: 2px; padding-bottom: 2px; }
+  .mainnav { order: 3; flex: 1 0 100%; margin: 0 -8px; justify-content: space-between; }
+  .mainnav a { flex: 1; justify-content: center; padding: 8px 4px; }
+  .theme-toggle { margin-left: auto; }
+}
+:root[data-theme="night"] .brand img, :root[data-theme="night"] .dash-head img {
+  filter: grayscale(1) sepia(1) hue-rotate(-40deg) saturate(2.5) brightness(0.55);
+}
+
 @media (min-width: 720px) {
   .form-actions { flex-direction: row; }
   .form-actions .btn.huge { width: auto; flex: 1; }

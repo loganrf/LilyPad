@@ -113,3 +113,45 @@ def test_xss_escaped(client):
     html = client.get("/timeline").text
     assert "<script>alert(1)</script>" not in html
     assert "&lt;script&gt;" in html
+
+
+def test_cli_reset_password(tmp_path, monkeypatch, capsys):
+    from app import cli, db, settings_store
+    from app.security import verify_password
+
+    monkeypatch.setenv("LILYPAD_DATA_DIR", str(tmp_path))
+    monkeypatch.delenv("LILYPAD_ADMIN_PASSWORD", raising=False)
+    assert cli.main(["reset-password", "--password", "brand-new-pass"]) == 0
+    conn = db.connect(tmp_path / "lilypad.sqlite3")
+    assert verify_password("brand-new-pass", settings_store.load(conn)["admin_password_hash"])
+    conn.close()
+    assert cli.main(["reset-password"]) == 0
+    assert "New admin password:" in capsys.readouterr().out
+    monkeypatch.setenv("LILYPAD_ADMIN_PASSWORD", "from-env")
+    assert cli.main(["reset-password"]) == 1
+
+
+def test_cli_backup_and_restore(tmp_path, monkeypatch, capsysbinary):
+    from app import cli, db, repo
+    from app.timeutil import now_db
+
+    monkeypatch.setenv("LILYPAD_DATA_DIR", str(tmp_path))
+    db.init_db(tmp_path / "lilypad.sqlite3")
+    conn = db.connect(tmp_path / "lilypad.sqlite3")
+    repo.insert(conn, "notes", {"occurred_at": now_db(), "body": "keep me"})
+    conn.close()
+    assert cli.main(["backup"]) == 0
+    snapshot = capsysbinary.readouterr().out
+    assert snapshot.startswith(b"SQLite format 3")
+    conn = db.connect(tmp_path / "lilypad.sqlite3")
+    conn.execute("DELETE FROM notes")
+    conn.close()
+    backup_file = tmp_path / "b.sqlite3"
+    backup_file.write_bytes(snapshot)
+    assert cli.main(["restore", str(backup_file)]) == 0
+    conn = db.connect(tmp_path / "lilypad.sqlite3")
+    assert conn.execute("SELECT body FROM notes").fetchone()[0] == "keep me"
+    conn.close()
+    junk = tmp_path / "junk"
+    junk.write_bytes(b"not a database")
+    assert cli.main(["restore", str(junk)]) == 1
