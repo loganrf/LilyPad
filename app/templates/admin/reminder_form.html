@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% set is_edit = reminder.id is defined and reminder.id %}
+{% block title %}{{ "Edit" if is_edit else "New" }} reminder · LilyPad{% endblock %}
+{% block content %}
+{% include "admin/_nav.html" %}
+<h1>{{ reminder.name if is_edit else "New reminder" }}</h1>
+{% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
+{% macro hm(name, label, minutes, hint="") -%}
+<fieldset class="field">
+  <legend>{{ label }}</legend>
+  <div class="hm">
+    <label><input type="number" name="{{ name }}_h" min="0" step="1" inputmode="numeric" value="{{ (minutes // 60) if minutes else 0 }}"> h</label>
+    <label><input type="number" name="{{ name }}_m" min="0" max="59" step="1" inputmode="numeric" value="{{ (minutes % 60) if minutes else 0 }}"> min</label>
+  </div>
+  {% if hint %}<span class="hint">{{ hint }}</span>{% endif %}
+</fieldset>
+{%- endmacro %}
+
+<form method="post" action="/admin/reminders/{{ reminder.id if is_edit else 'new' }}" class="stack" data-toggle-form>
+  {{ m.csrf_field(csrf) }}
+  <label class="field"><span class="label">Name</span>
+    <input type="text" name="name" value="{{ reminder.name or '' }}" maxlength="60" placeholder="{{ C.REMINDER_KINDS.get(reminder.kind, 'Reminder') }}"></label>
+  {{ m.radio_tiles("kind", C.REMINDER_KINDS, reminder.kind, "What does it watch?", required=True) }}
+  <p class="hint" data-show-if="kind:custom">Custom routines (vitamin D, medicine, tummy time…) get a “Done” button on the home screen; tapping it logs the routine and restarts the interval.</p>
+
+  <div data-show-if="kind:vitals">
+    <label class="field"><span class="label">Which measurement?</span>
+      <select name="vital_param_id">
+        <option value="">Any vitals check</option>
+        {% for p in params %}<option value="{{ p.id }}" {% if reminder.vital_param_id == p.id %}selected{% endif %}>{{ p.name }}{% if not p.active %} (archived){% endif %}</option>{% endfor %}
+      </select></label>
+  </div>
+
+  {{ hm("interval", "Every", reminder.interval_minutes, "Counted from the most recent matching entry.") }}
+  <fieldset class="field" data-show-if="kind:feeding">
+    <legend>Count feeding intervals from</legend>
+    <label class="check-row"><input type="radio" name="anchor" value="start" {% if reminder.anchor != "end" %}checked{% endif %}> <span>Start of the last feed (start-to-start, how most pediatricians count)</span></label>
+    <label class="check-row"><input type="radio" name="anchor" value="end" {% if reminder.anchor == "end" %}checked{% endif %}> <span>End of the last feed</span></label>
+  </fieldset>
+  {{ hm("window", "Heads-up window", reminder.window_minutes, "Notify this long before it's due (e.g. “feeding window opens”). 0 to skip.") }}
+  {{ hm("nag", "Repeat while overdue, every", reminder.nag_minutes, "0 to notify only once.") }}
+  <label class="field"><span class="label">Maximum repeats</span>
+    <input type="number" name="max_nags" min="0" max="50" value="{{ reminder.max_nags if reminder.max_nags is not none else 3 }}"></label>
+
+  <fieldset class="field">
+    <legend>Active hours <span class="muted">(optional)</span></legend>
+    <div class="two-col">
+      <label><span class="label">From</span><input type="time" name="active_start" value="{{ reminder.active_start or '' }}"></label>
+      <label><span class="label">Until</span><input type="time" name="active_end" value="{{ reminder.active_end or '' }}"></label>
+    </div>
+    <span class="hint">Outside these hours the reminder still shows its status but sends nothing. Leave blank for around the clock. Wraps past midnight (e.g. 07:00–22:00 or 22:00–06:00).</span>
+  </fieldset>
+
+  <fieldset class="field">
+    <legend>Send to</legend>
+    <label class="check-row"><input type="checkbox" name="notify_ntfy" value="1" {% if reminder.notify_ntfy %}checked{% endif %}> <span>ntfy (phones)</span></label>
+    <label class="check-row"><input type="checkbox" name="notify_dash" value="1" {% if reminder.notify_dash %}checked{% endif %}> <span>Dash (built-in /dash screens and the dash webhook)</span></label>
+  </fieldset>
+  <label class="field"><span class="label">ntfy priority when due</span>
+    <select name="priority">
+      {% for k, label in C.NTFY_PRIORITIES.items() %}<option value="{{ k }}" {% if reminder.priority == k %}selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+    <span class="hint">The heads-up goes one step lower; overdue repeats one step higher.</span></label>
+  <div class="two-col">
+    <label class="field"><span class="label">Order</span><input type="number" name="sort_order" value="{{ reminder.sort_order or 0 }}"></label>
+    <label class="check-row"><input type="checkbox" name="enabled" value="1" {% if reminder.enabled %}checked{% endif %}> <span>Enabled</span></label>
+  </div>
+  <div class="form-actions">
+    <button type="submit" class="btn huge primary">Save reminder</button>
+    <a class="btn ghost" href="/admin/reminders">Cancel</a>
+  </div>
+</form>
+{% if is_edit %}
+<form method="post" action="/admin/reminders/{{ reminder.id }}/delete" data-confirm="Delete this reminder? Logged routine entries are kept.">
+  {{ m.csrf_field(csrf) }}
+  <button type="submit" class="btn danger ghost">Delete reminder</button>
+</form>
+{% endif %}
+{% endblock %}

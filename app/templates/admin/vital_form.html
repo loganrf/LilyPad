@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% set is_edit = param.id is defined and param.id %}
+{% block title %}{{ "Edit" if is_edit else "Add" }} vital parameter · LilyPad{% endblock %}
+{% block content %}
+{% include "admin/_nav.html" %}
+<h1>{{ param.name if is_edit else "New vital parameter" }}</h1>
+{% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
+{% macro num(name, label, hint="") -%}
+<label class="field"><span class="label">{{ label }}</span>
+  <input type="number" name="{{ name }}" step="any" inputmode="decimal" value="{{ param[name] if param[name] is defined and param[name] is not none else '' }}">
+  {% if hint %}<span class="hint">{{ hint }}</span>{% endif %}</label>
+{%- endmacro %}
+<form method="post" action="/admin/vitals/{{ param.id if is_edit else 'new' }}" class="stack">
+  {{ m.csrf_field(csrf) }}
+  <div class="two-col">
+    <label class="field"><span class="label">Name</span><input type="text" name="name" value="{{ param.name or '' }}" maxlength="60" required placeholder="Temperature, Heart rate, SpO₂..."></label>
+    <label class="field"><span class="label">Unit</span><input type="text" name="unit" value="{{ param.unit or '' }}" maxlength="20" placeholder="°F, bpm, %, lb"></label>
+  </div>
+  <label class="field"><span class="label">Decimal places shown</span><input type="number" name="decimals" min="0" max="4" value="{{ param.decimals if param.decimals is not none else 1 }}"></label>
+  <fieldset class="field">
+    <legend>Expected range <span class="muted">(outside it = “watch”)</span></legend>
+    <div class="two-col">{{ num("expected_min", "Expected minimum") }}{{ num("expected_max", "Expected maximum") }}</div>
+  </fieldset>
+  <fieldset class="field">
+    <legend>Alert limits <span class="muted">(at or beyond = “alert”)</span></legend>
+    <div class="two-col">{{ num("alert_low", "Alert at or below") }}{{ num("alert_high", "Alert at or above") }}</div>
+    <label class="check-row"><input type="checkbox" name="notify_on_alert" value="1" {% if param.notify_on_alert %}checked{% endif %}> <span>Send an immediate notification for alert readings</span></label>
+  </fieldset>
+  <label class="field"><span class="label">Help text <span class="muted">(shown under the input)</span></span>
+    <input type="text" name="help_text" value="{{ param.help_text or '' }}" maxlength="500" placeholder="e.g. Rectal reading. Call the doctor at 100.4°F or above."></label>
+  <div class="two-col">
+    <label class="field"><span class="label">Order</span><input type="number" name="sort_order" value="{{ param.sort_order or 0 }}"></label>
+    <label class="check-row"><input type="checkbox" name="active" value="1" {% if param.active %}checked{% endif %}> <span>Active (shown on the vitals form)</span></label>
+  </div>
+  <p class="hint">Each reading keeps a copy of the limits in effect when it was logged, so changing limits later does not rewrite history.</p>
+  <div class="form-actions">
+    <button type="submit" class="btn huge primary">Save</button>
+    <a class="btn ghost" href="/admin/vitals">Cancel</a>
+  </div>
+</form>
+{% if is_edit %}
+<form method="post" action="/admin/vitals/{{ param.id }}/delete" data-confirm="Delete this parameter? If it has readings it will be archived instead.">
+  {{ m.csrf_field(csrf) }}
+  <button type="submit" class="btn danger ghost">Delete (or archive if it has readings)</button>
+</form>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% set is_edit = note.id is defined and note.id %}
+{% block title %}{{ "Edit note" if is_edit else "Add a note" }} · LilyPad{% endblock %}
+{% block content %}
+{% set next = request.query_params.get("next", "/") %}
+{% set when_value = note.when_at or note.occurred_at or None %}
+<h1>{{ "Edit note" if is_edit else "Add a note" }}</h1>
+{% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
+
+<form method="post" action="{{ '/note/%d/edit'|format(note.id) if is_edit else '/note/new' }}" class="stack">
+  <input type="hidden" name="next" value="{{ next }}">
+  <label class="field">
+    <span class="label">Note</span>
+    <textarea name="body" rows="6" maxlength="10000" required autofocus placeholder="What did you notice? Rash on left cheek, unusual crying after feeds, a question to ask...">{{ note.body or "" }}</textarea>
+  </label>
+
+  <label class="check-row big-check">
+    <input type="checkbox" name="for_pediatrician" value="1" {% if note.for_pediatrician and note.for_pediatrician|string in ("1", "on") %}checked{% endif %}>
+    <span>Ask the pediatrician about this</span>
+  </label>
+  {% if is_edit %}
+  <label class="check-row">
+    <input type="checkbox" name="discussed" value="1" {% if note.discussed and note.discussed|string in ("1", "on") %}checked{% endif %}>
+    <span>Already discussed with the pediatrician</span>
+  </label>
+  {% endif %}
+
+  <label class="field">
+    <span class="label">Tags <span class="muted">(comma separated, optional)</span></span>
+    <input type="text" name="tags" value="{{ note.tags or '' }}" id="tags-input" maxlength="500" autocomplete="off" placeholder="skin, sleep, crying">
+  </label>
+  {% if tags %}
+  <div class="chips setters">
+    {% for t in tags %}<button type="button" class="chip" data-append="#tags-input" data-value="{{ t }}">#{{ t }}</button>{% endfor %}
+  </div>
+  {% endif %}
+
+  {{ m.when_picker("when", when_value, tz, "When", selected_ago=note.when_ago or "0") }}
+  {{ m.who_field(caregivers, note.logged_by or who) }}
+
+  <div class="form-actions">
+    <button type="submit" class="btn huge primary">Save note</button>
+    <a class="btn ghost" href="{{ next }}">Cancel</a>
+  </div>
+</form>
+{% if is_edit %}{{ m.delete_form("notes", note.id, next) }}{% endif %}
+{% endblock %}

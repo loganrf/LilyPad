@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Admin · LilyPad{% endblock %}
+{% block content %}
+{% include "admin/_nav.html" %}
+<h1>Admin</h1>
+<p class="sub">This device stays unlocked for {{ (admin_remaining // 60) }} more minutes of inactivity. Use “Lock now” when you're done.</p>
+
+{% if generated_password_pending %}
+<p class="notice">You're still using the generated first-run password. <a href="/admin/settings#password">Set your own</a> — the <code>INITIAL_ADMIN_PASSWORD.txt</code> file in the data folder is deleted when you do.</p>
+{% endif %}
+{% if not ntfy_ready %}
+<p class="notice">Phone notifications aren't set up yet. Configure ntfy in <a href="/admin/settings#ntfy">Settings</a>. Reminders still appear on the home screen and on <a href="/dash">/dash</a>.</p>
+{% endif %}
+
+<div class="grid">
+  <section class="card">
+    <h2>Pediatrician questions</h2>
+    {% if ped_notes %}
+    <ul class="plain">
+      {% for n in ped_notes[:8] %}<li><a href="/note/{{ n.id }}/edit?next=/admin">{{ n.body[:120] }}{% if n.body|length > 120 %}…{% endif %}</a> <span class="muted">{{ n.occurred_at|dt(tz, now) }}</span></li>{% endfor %}
+    </ul>
+    {% else %}<p class="muted">No open questions.</p>{% endif %}
+    <p><a class="btn" href="/admin/report">Open the report</a></p>
+  </section>
+  <section class="card">
+    <h2>Records</h2>
+    <dl class="mini-stats">
+      <div><dt>Feeds</dt><dd>{{ counts.feedings }}</dd></div>
+      <div><dt>Diapers</dt><dd>{{ counts.diapers }}</dd></div>
+      <div><dt>Vitals checks</dt><dd>{{ counts.vital_checks }}</dd></div>
+      <div><dt>Notes</dt><dd>{{ counts.notes }}</dd></div>
+      <div><dt>Routines</dt><dd>{{ counts.task_logs }}</dd></div>
+    </dl>
+    <p><a class="btn" href="/admin/export">Export or back up</a></p>
+  </section>
+  <section class="card">
+    <h2>Notifications</h2>
+    <ul class="plain">
+      <li>ntfy: <strong>{{ "on" if ntfy_ready else "off" }}</strong></li>
+      <li>Dash webhook: <strong>{{ "on" if webhook_ready else "off" }}</strong></li>
+      <li>Built-in dash: always on at <a href="/dash">/dash</a></li>
+    </ul>
+    <p><a class="btn" href="/admin/reminders">Reminder schedules</a> <a class="btn ghost" href="/admin/alerts">Delivery log</a></p>
+  </section>
+</div>
+{% endblock %}

@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Admin sign-in · LilyPad{% endblock %}
+{% block content %}
+<div class="narrow">
+<h1>Admin area</h1>
+<p class="sub">Settings, full history, reports and exports are password protected. Everyday logging never needs this.</p>
+{% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
+<form method="post" action="/admin/login" class="stack">
+  <input type="hidden" name="next" value="{{ next_url }}">
+  <label class="field">
+    <span class="label">Admin password</span>
+    <input type="password" name="password" autocomplete="current-password" required autofocus>
+  </label>
+  <button type="submit" class="btn huge primary">Unlock</button>
+</form>
+<details class="help">
+  <summary>Forgot or never saw the password?</summary>
+  {% if env_password %}
+  <p>The password is set by the <code>LILYPAD_ADMIN_PASSWORD</code> environment variable in your <code>docker-compose.yml</code> (or <code>.env</code> file).</p>
+  {% else %}
+  <p>On first start LilyPad generated a password, printed it in the container log and saved it to <code>INITIAL_ADMIN_PASSWORD.txt</code> in the data volume:</p>
+  <pre>docker compose logs lilypad | grep -i password
+cat ./data/INITIAL_ADMIN_PASSWORD.txt</pre>
+  <p>To reset it, set <code>LILYPAD_ADMIN_PASSWORD</code> in <code>docker-compose.yml</code> and restart. See the README.</p>
+  {% endif %}
+</details>
+</div>
+{% endblock %}

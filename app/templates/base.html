@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en" data-theme="auto">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#14211c">
+  {% if now %}<meta name="lilypad-now" content="{{ now|iso }}">{% endif %}
+  <title>{% block title %}{{ baby_name or "LilyPad" }} · LilyPad{% endblock %}</title>
+  <link rel="manifest" href="/static/manifest.webmanifest">
+  <link rel="icon" href="/static/icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
+  <script src="/static/theme.js?v={{ version }}"></script>
+  <link rel="stylesheet" href="/static/app.css?v={{ version }}">
+  <script src="/static/app.js?v={{ version }}" defer></script>
+</head>
+<body class="{% block body_class %}{% endblock %}"{% if live %} data-live="1"{% endif %}>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="topbar">
+    <a class="brand" href="/">
+      <img src="/static/icons/icon.svg" alt="" width="28" height="28">
+      <span class="brand-text"><span class="brand-name">{{ baby_name or "LilyPad" }}</span>{% if baby_age %}<span class="brand-age">{{ baby_age }}</span>{% endif %}</span>
+    </a>
+    <nav class="mainnav" aria-label="Main">
+      <a href="/" {% if path == "/" %}aria-current="page"{% endif %}>Home</a>
+      <a href="/timeline" {% if path == "/timeline" %}aria-current="page"{% endif %}>Timeline</a>
+      <a href="/dash">Dash</a>
+      <a href="/admin" {% if path and path.startswith("/admin") %}aria-current="page"{% endif %}>{% if not is_admin %}<span class="lock" aria-hidden="true">&#128274;</span>{% endif %}Admin</a>
+    </nav>
+    <button type="button" class="theme-toggle" data-theme-toggle title="Display theme">
+      <span class="sr-only">Display theme:</span> <span data-theme-label>Auto</span>
+    </button>
+  </header>
+
+  {% if is_admin %}
+  <div class="admin-banner" role="note">
+    <span>Admin area unlocked on this device.</span>
+    <form method="post" action="/admin/logout" class="inline"><button type="submit" class="linkish">Lock now</button></form>
+  </div>
+  {% endif %}
+
+  {% if toast %}
+  <div class="toast toast-{{ toast[1] }}" role="status">
+    <span>{{ toast[0] }}</span>
+    {% if undo %}
+    <form method="post" action="/entry/{{ undo.table }}/{{ undo.id }}/{{ undo.action }}" class="inline">
+      <input type="hidden" name="undo" value="1">
+      <input type="hidden" name="next" value="{{ path }}">
+      <button type="submit" class="btn small">Undo</button>
+    </form>
+    {% endif %}
+    <a href="{{ path }}" class="toast-close" aria-label="Dismiss">&times;</a>
+  </div>
+  {% endif %}
+
+  <main id="main">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="footer">
+    {% if caregivers %}
+    <form method="post" action="/who" class="who">
+      <label for="who-select">Logging as</label>
+      <select id="who-select" name="who" data-autosubmit>
+        <option value="">(not set)</option>
+        {% for c in caregivers %}<option value="{{ c }}" {% if c == who %}selected{% endif %}>{{ c }}</option>{% endfor %}
+      </select>
+      <input type="hidden" name="next" value="{{ path }}">
+      <noscript><button type="submit" class="btn small">Save</button></noscript>
+    </form>
+    {% endif %}
+    <p><a href="/privacy">Privacy &amp; security</a> · LilyPad {{ version }} · Not medical advice — call your pediatrician with concerns.</p>
+  </footer>
+</body>
+</html>

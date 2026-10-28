@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block title %}Reminders · LilyPad{% endblock %}
+{% block content %}
+{% include "admin/_nav.html" %}
+<h1>Reminders</h1>
+<p class="sub">Each reminder counts its interval from the most recent matching entry. Logging that entry resets it. Notifications go out when the heads-up window opens, when it's due, and then repeat while overdue.</p>
+<p>
+  <a class="btn primary" href="/admin/reminders/new?kind=feeding">Feeding reminder</a>
+  <a class="btn" href="/admin/reminders/new?kind=diaper">Diaper</a>
+  <a class="btn" href="/admin/reminders/new?kind=vitals">Vitals</a>
+  <a class="btn" href="/admin/reminders/new?kind=custom">Custom routine</a>
+</p>
+<div class="table-wrap">
+<table class="table">
+  <thead><tr><th>Name</th><th>Watches</th><th>Every</th><th>Heads-up</th><th>Repeat</th><th>Channels</th><th>Now</th><th></th></tr></thead>
+  <tbody>
+  {% for r, status in items %}
+  <tr class="{{ '' if r.enabled else 'muted' }}">
+    <td><a href="/admin/reminders/{{ r.id }}">{{ r.name }}</a></td>
+    <td>{{ C.REMINDER_KINDS.get(r.kind, r.kind) }}{% if r.kind == "vitals" and r.vital_param_id and params.get(r.vital_param_id) %}: {{ params[r.vital_param_id].name }}{% endif %}{% if r.kind == "feeding" %} ({{ "from end" if r.anchor == "end" else "start to start" }}){% endif %}</td>
+    <td>{{ r.interval_minutes|duration }}</td>
+    <td>{{ r.window_minutes|duration if r.window_minutes else "—" }}</td>
+    <td>{% if r.nag_minutes %}every {{ r.nag_minutes|duration }} × {{ r.max_nags }}{% else %}—{% endif %}</td>
+    <td>{{ "ntfy" if r.notify_ntfy }}{{ " + " if r.notify_ntfy and r.notify_dash }}{{ "dash" if r.notify_dash }}{% if not r.notify_ntfy and not r.notify_dash %}none{% endif %}{% if r.active_start and r.active_end %}<br><span class="muted">{{ r.active_start }}–{{ r.active_end }}</span>{% endif %}</td>
+    <td>{% if status %}{{ m.stage_pill(status) }}<br><span class="muted">due {{ status.due_at|dt(tz, now) }}</span>{% else %}<span class="pill">off</span>{% endif %}</td>
+    <td><a href="/admin/reminders/{{ r.id }}">Edit</a></td>
+  </tr>
+  {% else %}
+  <tr><td colspan="8" class="muted">No reminders yet.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}

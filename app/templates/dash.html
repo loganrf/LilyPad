@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#0b0f0d">
+  <title>{{ baby_name }} · LilyPad dash</title>
+  <link rel="icon" href="/static/icons/icon.svg" type="image/svg+xml">
+  <script src="/static/theme.js?v={{ version }}" data-dash></script>
+  <link rel="stylesheet" href="/static/app.css?v={{ version }}">
+  <link rel="stylesheet" href="/static/dash.css?v={{ version }}">
+  <script src="/static/dash.js?v={{ version }}" defer></script>
+</head>
+<body class="dash" data-sound="{{ '1' if dash_sound else '0' }}" data-tz="{{ settings.timezone_name }}">
+  <header class="dash-head">
+    <div class="dash-baby"><span data-bind="baby.name">{{ baby_name }}</span> <span class="dash-age" data-bind="baby.age">{{ baby_age }}</span></div>
+    <div class="dash-clock" data-clock>--:--</div>
+    <div class="dash-tools">
+      <button type="button" class="dash-btn" data-sound-toggle>Sound: off</button>
+      <button type="button" class="dash-btn" data-theme-toggle><span data-theme-label>Dark</span></button>
+      <span class="dash-conn" data-conn title="Live connection">&#9679;</span>
+    </div>
+  </header>
+
+  <section class="dash-alerts" data-alerts aria-live="assertive"></section>
+
+  <main class="dash-grid">
+    <section class="dash-tile dash-feed">
+      <h2>Feeding</h2>
+      <div class="dash-big" data-feed-big>—</div>
+      <div class="dash-sub" data-feed-sub></div>
+      <div class="dash-next" data-feed-next></div>
+    </section>
+    <section class="dash-tile dash-diaper">
+      <h2>Diapers</h2>
+      <div class="dash-rows">
+        <div><span class="dash-label">Last change</span><span class="dash-val" data-diaper-last>—</span></div>
+        <div><span class="dash-label">Last wet</span><span class="dash-val" data-diaper-wet>—</span></div>
+        <div><span class="dash-label">Last poop</span><span class="dash-val" data-diaper-dirty>—</span></div>
+      </div>
+      <div class="dash-flag" data-diaper-flag hidden></div>
+    </section>
+    <section class="dash-tile dash-counts">
+      <h2>Last 24 hours</h2>
+      <div class="dash-stats" data-counts></div>
+    </section>
+    <section class="dash-tile dash-reminders">
+      <h2>Up next</h2>
+      <ul class="dash-list" data-reminders></ul>
+    </section>
+    <section class="dash-tile dash-vitals">
+      <h2>Vitals</h2>
+      <ul class="dash-list" data-vitals></ul>
+    </section>
+  </main>
+  <footer class="dash-foot"><span data-updated>Connecting…</span> · <a href="/">Open LilyPad</a></footer>
+  <noscript><p class="dash-noscript">The dash needs JavaScript. The <a href="/">home screen</a> works without it.</p></noscript>
+</body>
+</html>

@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block title %}History · LilyPad{% endblock %}
+{% block content %}
+{% include "admin/_nav.html" %}
+<h1>History</h1>
+<form method="get" action="/admin/history" class="filter-form">
+  <label><span class="label">From</span><input type="date" name="start" value="{{ start.isoformat() }}"></label>
+  <label><span class="label">To</span><input type="date" name="end" value="{{ end.isoformat() }}"></label>
+  <label><span class="label">Type</span>
+    <select name="type">{% for k in kinds %}<option value="{{ k }}" {% if k == kind %}selected{% endif %}>{{ k|capitalize }}</option>{% endfor %}</select></label>
+  <label class="grow"><span class="label">Search</span><input type="search" name="q" value="{{ q }}" placeholder="rash, formula, Sam..."></label>
+  <button type="submit" class="btn">Show</button>
+</form>
+<p class="sub">{{ count }} entr{{ "y" if count == 1 else "ies" }}.</p>
+{% set next = request.url.path ~ ("?" ~ request.url.query if request.url.query else "") %}
+{% for day, items in days %}
+<section class="day">
+  <h2 class="day-h">{{ items[0].time|day(tz) }}</h2>
+  <ul class="entries">{% for item in items %}{{ m.entry_item(item, tz, now, next) }}{% endfor %}</ul>
+</section>
+{% else %}
+<p class="muted">Nothing matches.</p>
+{% endfor %}
+{% endblock %}

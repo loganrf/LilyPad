@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Export · LilyPad{% endblock %}
+{% block content %}
+{% include "admin/_nav.html" %}
+<h1>Export &amp; backup</h1>
+
+<section class="card">
+  <h2>Spreadsheets (CSV)</h2>
+  <p class="sub">Leave the dates empty to export everything. Times are in {{ settings.timezone_name }} with a UTC column alongside.</p>
+  <form method="get" class="filter-form" data-export-form>
+    <label><span class="label">From</span><input type="date" name="start"></label>
+    <label><span class="label">To</span><input type="date" name="end" max="{{ today.isoformat() }}"></label>
+  </form>
+  <div class="actions">
+    {% for name in csv_names %}<a class="btn" href="/admin/export/{{ name }}.csv" data-export-link>{{ name|capitalize }}</a>{% endfor %}
+  </div>
+</section>
+
+<section class="card">
+  <h2>Full backup</h2>
+  <ul class="plain">
+    <li><a class="btn" href="/admin/export/backup.json">Download JSON backup</a> — every entry, vital definition, reminder and the notification log. <strong>Excludes</strong> the admin password hash, signing key and ntfy/webhook credentials.</li>
+    <li><a class="btn" href="/admin/export/lilypad.sqlite3">Download database file</a> — an exact, consistent copy of the SQLite database. <strong>Includes</strong> the hashed admin password and any stored ntfy/webhook credentials; store it like a password.</li>
+  </ul>
+  <p class="hint">To restore, stop the container and replace <code>lilypad.sqlite3</code> in the data volume with the downloaded file (see the README).</p>
+</section>
+<p class="fineprint">Exports contain your baby's health information. Keep downloaded files somewhere private.</p>
+{% endblock %}

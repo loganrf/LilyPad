@@ -1,0 +1,112 @@
+{# Reusable form and display pieces. #}
+
+{% macro when_picker(prefix, value=None, tz=None, label="When", chips=C.WHEN_CHIPS, selected_ago="0") -%}
+<fieldset class="field when">
+  <legend>{{ label }}</legend>
+  {% if value %}
+    <input type="datetime-local" name="{{ prefix }}_at" value="{{ value|local_input(tz) if value is string and 'Z' in value else value }}" required>
+  {% else %}
+    <div class="chips">
+      {% for minutes in chips %}
+      <label class="chip"><input type="radio" name="{{ prefix }}_ago" value="{{ minutes }}" {% if selected_ago == minutes|string %}checked{% endif %}><span>{% if minutes == 0 %}Now{% elif minutes < 60 %}{{ minutes }}m ago{% else %}{{ minutes // 60 }}h ago{% endif %}</span></label>
+      {% endfor %}
+      <label class="chip"><input type="radio" name="{{ prefix }}_ago" value="custom" {% if selected_ago == "custom" %}checked{% endif %} data-custom-toggle><span>Other…</span></label>
+    </div>
+    <input type="datetime-local" name="{{ prefix }}_at" class="when-custom" aria-label="{{ label }} (exact time)" data-custom-input>
+  {% endif %}
+</fieldset>
+{%- endmacro %}
+
+{% macro radio_tiles(name, options, selected=None, legend="", required=False, cls="", data_attrs=None) -%}
+<fieldset class="field tiles {{ cls }}">
+  {% if legend %}<legend>{{ legend }}</legend>{% endif %}
+  <div class="tile-row">
+    {% for key, label in options.items() %}
+    <label class="tile-opt {{ name }}-{{ key }}"{% if data_attrs and data_attrs.get(key) %} data-flag="{{ data_attrs[key] }}"{% endif %}>
+      <input type="radio" name="{{ name }}" value="{{ key }}" {% if selected is not none and selected|string == key|string %}checked{% endif %} {% if required %}required{% endif %}>
+      <span>{{ label }}</span>
+    </label>
+    {% endfor %}
+    {% if not required %}
+    <label class="tile-opt tile-none"><input type="radio" name="{{ name }}" value="" {% if selected is none or selected == "" %}checked{% endif %}><span>—</span></label>
+    {% endif %}
+  </div>
+</fieldset>
+{%- endmacro %}
+
+{% macro checks(name, options, selected=(), legend="") -%}
+<fieldset class="field tiles">
+  {% if legend %}<legend>{{ legend }}</legend>{% endif %}
+  <div class="tile-row">
+    {% for key, label in options.items() %}
+    <label class="tile-opt check"><input type="checkbox" name="{{ name }}" value="{{ key }}" {% if key in selected %}checked{% endif %}><span>{{ label }}</span></label>
+    {% endfor %}
+  </div>
+</fieldset>
+{%- endmacro %}
+
+{% macro who_field(caregivers, selected) -%}
+{% if caregivers %}
+<label class="field">
+  <span class="label">Logged by</span>
+  <select name="logged_by">
+    <option value="">(not set)</option>
+    {% for c in caregivers %}<option value="{{ c }}" {% if c == selected %}selected{% endif %}>{{ c }}</option>{% endfor %}
+  </select>
+</label>
+{% endif %}
+{%- endmacro %}
+
+{% macro stage_pill(status) -%}
+<span class="pill stage-{{ status.stage }}">{{ C.REMINDER_STAGE_LABELS.get(status.stage, status.stage) }}</span>
+{%- endmacro %}
+
+{% macro reminder_line(status, tz, now, next="/") -%}
+<div class="reminder-line stage-{{ status.stage }}">
+  <div class="rl-main">
+    <span class="rl-name">{{ status.reminder.name }}</span>
+    {{ stage_pill(status) }}
+  </div>
+  <div class="rl-detail">
+    {% if status.stage == "in_progress" %}
+      Running now.
+    {% elif status.stage == "snoozed" %}
+      Snoozed until {{ status.snoozed_until|time(tz) }} · was due {{ status.due_at|time(tz) }}
+    {% else %}
+      {% if status.reminder.window_minutes and status.stage == "ok" %}Window opens {{ status.window_at|time(tz) }} · {% endif %}
+      Due {{ status.due_at|time(tz) }} (<span data-until="{{ status.due_at|iso }}">{{ status.due_at|until(now) }}</span>)
+      {% if not status.anchor_from_event %}<span class="muted"> · nothing logged yet</span>{% endif %}
+      {% if not status.in_active_hours %}<span class="muted"> · alerts paused outside active hours</span>{% endif %}
+    {% endif %}
+  </div>
+  {% if status.stage in ("window", "due", "overdue") %}
+  <form method="post" action="/api/reminders/{{ status.reminder.id }}/snooze?minutes=15" class="inline">
+    <input type="hidden" name="next" value="{{ next }}">
+    <button type="submit" class="btn small ghost">Snooze 15m</button>
+  </form>
+  {% endif %}
+</div>
+{%- endmacro %}
+
+{% macro entry_item(item, tz, now, next="/", show_edit=True) -%}
+<li class="entry entry-{{ item.kind }}{% if item.status %} status-{{ item.status }}{% endif %}">
+  <span class="entry-time">{{ item.time|time(tz) }}</span>
+  <span class="entry-icon icon-{{ item.icon }}" aria-hidden="true"></span>
+  <span class="entry-body">
+    <span class="entry-title">{{ item.title }}{% if item.status == "alert" %} <span class="pill status-alert">check</span>{% elif item.status == "watch" %} <span class="pill status-watch">watch</span>{% elif item.status == "ped" %} <span class="pill status-ped">ask doctor</span>{% elif item.status == "done" %} <span class="pill">discussed</span>{% elif item.status == "active" %} <span class="pill stage-in_progress">running</span>{% endif %}</span>
+    {% if item.detail %}<span class="entry-detail">{{ item.detail }}</span>{% endif %}
+    {% if item.flag %}<span class="entry-flag">{{ item.flag }}</span>{% endif %}
+    {% if item.logged_by %}<span class="entry-who">{{ item.logged_by }}</span>{% endif %}
+  </span>
+  {% if show_edit %}<a class="entry-edit" href="{{ item.edit_url }}?next={{ next|urlq }}" aria-label="Edit {{ item.title }}">Edit</a>{% endif %}
+</li>
+{%- endmacro %}
+
+{% macro delete_form(table, id, next="/", label="Delete this entry") -%}
+<form method="post" action="/entry/{{ table }}/{{ id }}/delete" class="delete-form" data-confirm="Delete this entry? You can undo right after.">
+  <input type="hidden" name="next" value="{{ next }}">
+  <button type="submit" class="btn danger ghost">{{ label }}</button>
+</form>
+{%- endmacro %}
+
+{% macro csrf_field(token) -%}<input type="hidden" name="csrf" value="{{ token }}">{%- endmacro %}

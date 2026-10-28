@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block title %}Notifications · LilyPad{% endblock %}
+{% block content %}
+{% include "admin/_nav.html" %}
+<h1>Notification log</h1>
+<p class="sub">The last 200 notifications and where each was delivered.</p>
+<form method="post" action="/admin/test-notification" class="inline">
+  {{ m.csrf_field(csrf) }}
+  <button type="submit" class="btn">Send a test notification</button>
+</form>
+<div class="table-wrap">
+<table class="table">
+  <thead><tr><th>When</th><th>Notification</th><th>Delivery</th><th>Ack</th></tr></thead>
+  <tbody>
+  {% for a in alerts %}
+  <tr>
+    <td>{{ a.created_at|dt(tz, now) }}</td>
+    <td><strong>{{ a.title }}</strong><br><span class="muted">{{ a.message }}</span></td>
+    <td>{% for ch, result in a.delivery.items() %}<div><span class="label-inline">{{ ch }}:</span> <span class="{{ 'error-text' if result.startswith('error') }}">{{ result }}</span></div>{% endfor %}</td>
+    <td>{{ a.acknowledged_at|dt(tz, now) if a.acknowledged_at else "—" }}</td>
+  </tr>
+  {% else %}
+  <tr><td colspan="4" class="muted">No notifications yet.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}

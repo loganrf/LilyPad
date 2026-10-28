@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% set is_edit = check and check.id is defined and check.id %}
+{% block title %}{{ "Edit vitals" if is_edit else "Log vitals" }} · LilyPad{% endblock %}
+{% block content %}
+{% set next = request.query_params.get("next", "/") %}
+{% set when_value = (check.when_at or check.measured_at) if check else None %}
+<h1>{{ "Edit vitals" if is_edit else "Log vitals" }}</h1>
+{% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
+
+{% if not params %}
+<p class="notice">No vital parameters are defined yet. An admin can add them (temperature, weight, heart rate, oxygen saturation...) under <a href="/admin/vitals">Admin › Vitals</a>, each with its own expected range and alert limits.</p>
+{% else %}
+<form method="post" action="{{ '/vitals/%d/edit'|format(check.id) if is_edit else '/vitals/new' }}" class="stack">
+  <input type="hidden" name="next" value="{{ next }}">
+  <p class="sub">Fill in whichever you measured; leave the rest blank.</p>
+  {% for p in params %}
+  {% set raw = readings.get(p.id) %}
+  <label class="field vital-input">
+    <span class="label">{{ p.name }}{% if p.unit %} ({{ p.unit }}){% endif %}{% if not p.active %} <span class="muted">(archived)</span>{% endif %}</span>
+    <input type="number" name="p_{{ p.id }}" inputmode="decimal" step="any"
+           value="{{ raw if raw is string else ('%.*f'|format(p.decimals, raw) if raw is not none else '') }}"
+           data-expected-min="{{ p.expected_min if p.expected_min is not none else '' }}"
+           data-expected-max="{{ p.expected_max if p.expected_max is not none else '' }}"
+           data-alert-low="{{ p.alert_low if p.alert_low is not none else '' }}"
+           data-alert-high="{{ p.alert_high if p.alert_high is not none else '' }}">
+    <span class="hint">
+      {% if p.expected_min is not none or p.expected_max is not none %}Expected {{ p.expected_min|vital(p) if p.expected_min is not none else "…" }} – {{ p.expected_max|vital(p) if p.expected_max is not none else "…" }}.{% endif %}
+      {% if p.alert_low is not none %} Alert at or below {{ p.alert_low|vital(p) }}.{% endif %}
+      {% if p.alert_high is not none %} Alert at or above {{ p.alert_high|vital(p) }}.{% endif %}
+      {% if p.help_text %} {{ p.help_text }}{% endif %}
+    </span>
+    <span class="range-feedback" data-range-feedback aria-live="polite"></span>
+  </label>
+  {% endfor %}
+
+  {{ m.when_picker("when", when_value, tz, "Measured", selected_ago=(check.when_ago if check else None) or "0") }}
+
+  <label class="field">
+    <span class="label">Notes</span>
+    <textarea name="notes" rows="3" maxlength="2000" placeholder="Optional: method (rectal/armpit), circumstances...">{{ check.notes if check and check.notes else "" }}</textarea>
+  </label>
+  {{ m.who_field(caregivers, (check.logged_by if check else None) or who) }}
+
+  <div class="form-actions">
+    <button type="submit" class="btn huge primary">Save vitals</button>
+    <a class="btn ghost" href="{{ next }}">Cancel</a>
+  </div>
+</form>
+{% if is_edit %}{{ m.delete_form("vital_checks", check.id, next) }}{% endif %}
+{% endif %}
+{% endblock %}

@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% set is_edit = feed.id is defined and feed.id %}
+{% block title %}{{ "Edit feed" if is_edit else "Log a feed" }} · LilyPad{% endblock %}
+{% block content %}
+{% set next = request.query_params.get("next", "/") %}
+{% set method = feed.method or "breast" %}
+{% set start_value = feed.start_at or feed.started_at or None %}
+{% set amount_value = feed.amount if feed.amount is defined else (feed.amount_ml|volume_input(volume_unit) if feed.amount_ml else "") %}
+{% set duration_value = feed.duration if feed.duration is defined else (duration if duration is not none else "") %}
+{% set issue_list = (feed.issues or "").split(",") %}
+
+<h1>{{ "Edit feed" if is_edit else "Log a feed" }}</h1>
+{% if is_edit and not feed.ended_at %}<p class="notice">This feed's timer is still running. Saving with a duration will stop it.</p>{% endif %}
+{% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
+
+<form method="post" action="{{ '/feed/%d/edit'|format(feed.id) if is_edit else '/feed/new' }}" class="stack" data-toggle-form>
+  <input type="hidden" name="next" value="{{ next }}">
+  {{ m.radio_tiles("method", C.FEED_METHODS, method, "Type", required=True, cls="big") }}
+
+  <div data-show-if="method:breast">
+    {{ m.radio_tiles("side", C.FEED_SIDES, feed.side, "Side" ~ (" (suggested: " ~ C.FEED_SIDES[suggested_side] ~ ")" if suggested_side and not is_edit else "")) }}
+  </div>
+
+  <div data-show-if="method:bottle">
+    {{ m.radio_tiles("bottle_content", C.BOTTLE_CONTENTS, feed.bottle_content, "What's in the bottle") }}
+  </div>
+  <div data-show-if="method:bottle,solids">
+    <label class="field">
+      <span class="label">Amount ({{ volume_unit }})</span>
+      <input type="number" name="amount" inputmode="decimal" step="any" min="0" value="{{ amount_value }}" id="amount-input">
+    </label>
+    <div class="chips setters">
+      {% for v in (C.AMOUNT_CHIPS_OZ if volume_unit == "oz" else C.AMOUNT_CHIPS_ML) %}
+      <button type="button" class="chip" data-set="#amount-input" data-value="{{ v }}">{{ v }} {{ volume_unit }}</button>
+      {% endfor %}
+    </div>
+  </div>
+
+  {{ m.when_picker("start", start_value, tz, "Started", selected_ago=feed.start_ago or "0") }}
+
+  <label class="field">
+    <span class="label">Duration (minutes)</span>
+    <input type="number" name="duration" inputmode="numeric" min="0" max="300" step="1" value="{{ duration_value }}" id="duration-input" placeholder="{{ 'still running' if is_edit and not feed.ended_at else '' }}">
+  </label>
+  <div class="chips setters">
+    {% for v in C.DURATION_CHIPS %}<button type="button" class="chip" data-set="#duration-input" data-value="{{ v }}">{{ v }}m</button>{% endfor %}
+  </div>
+
+  {{ m.radio_tiles("quality", C.FEED_QUALITY, feed.quality, "How did it go?") }}
+  {{ m.checks("issues", C.FEED_ISSUES, issue_list, "Anything notable?") }}
+
+  <label class="field">
+    <span class="label">Notes</span>
+    <textarea name="notes" rows="3" maxlength="2000" placeholder="Optional">{{ feed.notes or "" }}</textarea>
+  </label>
+  {{ m.who_field(caregivers, feed.logged_by or who) }}
+
+  <div class="form-actions">
+    <button type="submit" class="btn huge primary">Save feed</button>
+    <a class="btn ghost" href="{{ next }}">Cancel</a>
+  </div>
+</form>
+{% if is_edit %}{{ m.delete_form("feedings", feed.id, next) }}{% endif %}
+{% endblock %}

@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block title %}Trash · LilyPad{% endblock %}
+{% block content %}
+{% include "admin/_nav.html" %}
+<h1>Trash</h1>
+<p class="sub">Deleted entries are kept for {{ keep_days }} days so mistakes (or mischief) can be undone.</p>
+{% if items %}
+<ul class="entries">
+  {% for item in items %}
+  <li class="entry entry-{{ item.kind }}">
+    <span class="entry-time">{{ item.time|dt(tz, now) }}</span>
+    <span class="entry-icon icon-{{ item.icon }}" aria-hidden="true"></span>
+    <span class="entry-body">
+      <span class="entry-title">{{ item.title }}</span>
+      {% if item.detail %}<span class="entry-detail">{{ item.detail }}</span>{% endif %}
+      <span class="entry-who">deleted {{ item.deleted_at|dt(tz, now) }}</span>
+    </span>
+    <form method="post" action="/entry/{{ item.table }}/{{ item.id }}/restore" class="inline">
+      <input type="hidden" name="next" value="/admin/trash">
+      <button type="submit" class="btn small">Restore</button>
+    </form>
+  </li>
+  {% endfor %}
+</ul>
+<form method="post" action="/admin/trash/purge" data-confirm="Permanently delete everything in the trash?">
+  {{ m.csrf_field(csrf) }}
+  <button type="submit" class="btn danger ghost">Empty trash now</button>
+</form>
+{% else %}
+<p class="muted">The trash is empty.</p>
+{% endif %}
+{% endblock %}
