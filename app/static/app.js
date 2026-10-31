@@ -132,6 +132,17 @@
     else window.addEventListener("resize", set);
   }
 
+  // Rows that scroll sideways on a phone (admin sections, timeline filters)
+  // open with the current item in view rather than cut off past the edge.
+  function revealCurrent() {
+    document.querySelectorAll(".subnav, .filter-row").forEach(function (row) {
+      var cur = row.querySelector("[aria-current]");
+      if (!cur || row.scrollWidth <= row.clientWidth) return;
+      var r = row.getBoundingClientRect(), c = cur.getBoundingClientRect();
+      if (c.left < r.left || c.right > r.right) row.scrollLeft += c.left - r.left - (r.width - c.width) / 2;
+    });
+  }
+
   // Live refresh: when the other parent logs something, reload this screen.
   function bindLive() {
     if (!document.body.hasAttribute("data-live") || !window.EventSource) return;
@@ -161,6 +172,7 @@
   document.addEventListener("DOMContentLoaded", function () {
     document.documentElement.classList.add("js");
     trackTopbar();
+    revealCurrent();
     refreshTimes();
     refreshTimers();
     setInterval(refreshTimes, 30000);

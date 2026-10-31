@@ -7,7 +7,7 @@
 <p class="sub">Define what you measure, its unit, the range you expect, and the limits that should raise an alert. Values outside the expected range are flagged “watch”; values <strong>at or beyond</strong> an alert limit are flagged “alert” and, if enabled, sent immediately to ntfy and the dash.</p>
 <p><a class="btn primary" href="/admin/vitals/new">Add a parameter</a></p>
 <div class="table-wrap">
-<table class="table">
+<table class="table wide">
   <thead><tr><th>Name</th><th>Unit</th><th>Expected</th><th>Alert limits</th><th>Notify</th><th>Status</th><th>Readings</th><th></th></tr></thead>
   <tbody>
   {% for p in params %}

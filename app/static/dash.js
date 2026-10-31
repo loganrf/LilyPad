@@ -26,6 +26,26 @@
     return el;
   }
   function clear(el) { while (el.firstChild) el.removeChild(el.firstChild); }
+  function text(s) { return document.createTextNode(s); }
+  // Short phrases ("in 2h 30m", "(1:31 PM)") stay on one line; long text
+  // wraps at the " · " between them instead of mid-phrase.
+  function keep(s, cls) { return node("span", "nowrap" + (cls ? " " + cls : ""), s); }
+  function joined(parent, parts) {
+    parts.forEach(function (p, i) {
+      if (i) parent.appendChild(text(" · "));
+      parent.appendChild(typeof p === "string" ? keep(p) : p);
+    });
+    return parent;
+  }
+  // "3h 07m" -> 3<small>h</small> 07<small>m</small>: digits stay big,
+  // units shrink, so figures fit narrow tiles.
+  function figure(s) {
+    var el = node("span", "v");
+    String(s).split(/(\s*[a-z]+)/i).forEach(function (part, i) {
+      if (part) el.appendChild(i % 2 ? node("small", null, part) : text(part));
+    });
+    return el;
+  }
   function duration(mins) {
     mins = Math.round(mins);
     if (mins < 60) return mins + "m";
@@ -67,10 +87,10 @@
     clear(box);
     (data.vital_alerts || []).forEach(function (a) {
       var row = node("div", "dash-alert critical");
-      var text = node("div", "dash-alert-text");
-      text.appendChild(node("strong", null, a.title));
-      text.appendChild(node("span", null, a.message));
-      row.appendChild(text);
+      var body = node("div", "dash-alert-text");
+      body.appendChild(node("strong", null, a.title));
+      body.appendChild(node("span", null, a.message));
+      row.appendChild(body);
       var btn = node("button", "dash-btn", "Acknowledge");
       btn.type = "button";
       btn.addEventListener("click", function () { post("/api/alerts/" + a.id + "/ack"); });
@@ -80,10 +100,14 @@
     (data.reminders || []).forEach(function (r) {
       if (["window", "due", "overdue"].indexOf(r.stage) < 0 || !r.in_active_hours) return;
       var row = node("div", "dash-alert " + r.stage);
-      var text = node("div", "dash-alert-text");
-      text.appendChild(node("strong", null, r.name + ": " + r.stage_label.toLowerCase()));
-      text.appendChild(node("span", null, "Due " + at(r.due_at) + " (" + until(r.due_at) + ")"));
-      row.appendChild(text);
+      var body = node("div", "dash-alert-text");
+      body.appendChild(node("strong", null, r.name + ": " + r.stage_label.toLowerCase()));
+      var due = node("span", null, "Due ");
+      due.appendChild(keep(at(r.due_at)));
+      due.appendChild(text(" "));
+      due.appendChild(keep("(" + until(r.due_at) + ")"));
+      body.appendChild(due);
+      row.appendChild(body);
       var btn = node("button", "dash-btn", "Snooze 15m");
       btn.type = "button";
       btn.addEventListener("click", function () { post("/api/reminders/" + r.id + "/snooze?minutes=15"); });
@@ -98,12 +122,16 @@
     var tile = $(".dash-feed");
     var rem = (data.reminders || []).filter(function (r) { return r.kind === "feeding"; })[0];
     tile.className = "dash-tile dash-feed" + (rem ? " stage-" + rem.stage : "");
+    clear(sub);
     if (f.active) {
       big.textContent = timer(f.active.started_at);
       big.setAttribute("data-live-timer", f.active.started_at);
-      sub.textContent = "Feeding now · " + f.active.method_label + (f.active.side_label ? " · " + f.active.side_label : "") +
-        (f.active.side === "both" && f.active.last_side_label ? ", now on " + f.active.last_side_label.toLowerCase() : "") +
-        " · since " + at(f.active.started_at);
+      var parts = ["Feeding now", f.active.method_label];
+      if (f.active.side_label) {
+        parts.push(f.active.side_label + (f.active.side === "both" && f.active.last_side_label ? ", now on " + f.active.last_side_label.toLowerCase() : ""));
+      }
+      parts.push("since " + at(f.active.started_at));
+      joined(sub, parts);
     } else {
       big.removeAttribute("data-live-timer");
       if (f.last) {
@@ -113,27 +141,31 @@
         if (f.last.duration_min) bits.push(duration(f.last.duration_min));
         if (f.last.amount_ml) bits.push(volume(f.last.amount_ml, data.volume_unit));
         if (f.last.quality) bits.push(f.last.quality.toLowerCase());
-        sub.textContent = "since last feed started (" + at(f.last.started_at) + ") · " + bits.join(" · ");
+        var since = node("span", null, "since last feed started ");
+        since.appendChild(keep("(" + at(f.last.started_at) + ")"));
+        joined(sub, [since].concat(bits));
       } else {
         big.textContent = "No feeds yet";
-        sub.textContent = "";
       }
     }
     clear(next);
     if (rem && rem.stage !== "in_progress") {
       next.appendChild(node("span", "pill stage-" + rem.stage, rem.stage_label));
-      next.appendChild(document.createTextNode(" Next due " + at(rem.due_at) + " (" + until(rem.due_at) + ")"));
+      next.appendChild(text("Next due "));
+      next.appendChild(keep(at(rem.due_at)));
+      next.appendChild(text(" "));
+      next.appendChild(keep("(" + until(rem.due_at) + ")"));
     }
-    if (f.suggested_side && !f.active) {
-      next.appendChild(node("div", "dash-hint", "Suggested side: " + f.suggested_side));
-    }
+    $("[data-feed-hint]").textContent = f.suggested_side && !f.active ? "Suggested side: " + f.suggested_side : "";
   }
 
   function renderDiapers() {
     var d = data.diaper;
-    $("[data-diaper-last]").textContent = d.last ? ago(d.last.occurred_at) + " · " + d.last.kind_label.toLowerCase() : "—";
+    $("[data-diaper-last]").textContent = d.last ? ago(d.last.occurred_at) : "—";
+    $("[data-diaper-last-detail]").textContent = d.last ? d.last.kind_label.toLowerCase() : "";
     $("[data-diaper-wet]").textContent = d.last_wet ? ago(d.last_wet.occurred_at) : "—";
-    $("[data-diaper-dirty]").textContent = d.last_dirty ? ago(d.last_dirty.occurred_at) + (d.last_dirty.color_label ? " · " + d.last_dirty.color_label.toLowerCase() : "") : "—";
+    $("[data-diaper-dirty]").textContent = d.last_dirty ? ago(d.last_dirty.occurred_at) : "—";
+    $("[data-diaper-dirty-detail]").textContent = d.last_dirty && d.last_dirty.color_label ? d.last_dirty.color_label.toLowerCase() : "";
     var flag = $("[data-diaper-flag]");
     flag.hidden = !(d.last_dirty && d.last_dirty.flag);
     flag.textContent = d.last_dirty && d.last_dirty.flag ? "⚠ " + d.last_dirty.flag : "";
@@ -146,10 +178,18 @@
     if (c.bottle_ml) items.splice(2, 0, [volume(c.bottle_ml, data.volume_unit), "bottle"]);
     items.forEach(function (it) {
       var s = node("div", "dash-stat");
-      s.appendChild(node("span", "v", String(it[0])));
+      s.appendChild(figure(it[0]));
       s.appendChild(node("span", "l", it[1]));
       box.appendChild(s);
     });
+  }
+
+  function listItem(cls, name, pill) {
+    var li = node("li", cls), head = node("div", "dash-li-head");
+    head.appendChild(node("span", "dash-li-name", name));
+    if (pill) head.appendChild(pill);
+    li.appendChild(head);
+    return li;
   }
 
   function renderReminders() {
@@ -158,12 +198,11 @@
     var items = (data.reminders || []).slice().sort(function (a, b) { return Date.parse(a.due_at) - Date.parse(b.due_at); });
     if (!items.length) list.appendChild(node("li", "muted", "No reminders enabled."));
     items.forEach(function (r) {
-      var li = node("li", "stage-" + r.stage);
-      li.appendChild(node("span", "dash-li-name", r.name));
-      var right = node("span", "dash-li-val");
-      right.appendChild(node("span", "pill stage-" + r.stage, r.stage_label));
-      right.appendChild(document.createTextNode(r.stage === "in_progress" ? " running" : " " + at(r.due_at) + " · " + until(r.due_at)));
-      li.appendChild(right);
+      var li = listItem("stage-" + r.stage, r.name, node("span", "pill stage-" + r.stage, r.stage_label));
+      var sub = node("div", "dash-li-sub");
+      if (r.stage === "in_progress") sub.textContent = "Running now";
+      else joined(sub, [node("b", "nowrap", at(r.due_at)), until(r.due_at)]);
+      li.appendChild(sub);
       list.appendChild(li);
     });
   }
@@ -174,18 +213,18 @@
     var items = data.vitals || [];
     if (!items.length) list.appendChild(node("li", "muted", "No vitals configured."));
     items.forEach(function (v) {
-      var li = node("li", "status-" + (v.status || "none"));
-      li.appendChild(node("span", "dash-li-name", v.name));
-      var right = node("span", "dash-li-val");
+      var pill = null;
+      if (v.status === "alert") pill = node("span", "pill status-alert", "⚠ alert");
+      else if (v.status === "watch") pill = node("span", "pill status-watch", "watch");
+      var li = listItem("status-" + (v.status || "none"), v.name, pill);
+      var sub = node("div", "dash-li-sub");
       if (v.value === null) {
-        right.textContent = "—";
+        sub.appendChild(node("span", "muted", "Not logged yet"));
       } else {
-        right.appendChild(node("strong", null, v.display));
-        if (v.status === "alert") right.appendChild(node("span", "pill status-alert", "⚠ alert"));
-        else if (v.status === "watch") right.appendChild(node("span", "pill status-watch", "watch"));
-        right.appendChild(document.createTextNode(" " + ago(v.measured_at)));
+        var reading = node("b", "nowrap dash-reading", v.display);
+        joined(sub, [reading, ago(v.measured_at)]);
       }
-      li.appendChild(right);
+      li.appendChild(sub);
       list.appendChild(li);
     });
   }
@@ -281,11 +320,13 @@
     });
 
     var clock = $("[data-clock]");
-    setInterval(function () {
+    function tick() {
       clock.textContent = clockFmt.format(new Date(now()));
       var t = document.querySelector("[data-live-timer]");
       if (t) t.textContent = timer(t.getAttribute("data-live-timer"));
-    }, 1000);
+    }
+    tick(); // no "--:--" placeholder for the first second
+    setInterval(tick, 1000);
     setInterval(render, 15000);
     setInterval(function () { if (Date.now() - lastLoad > 55000) load(); }, 60000);
 

@@ -120,7 +120,7 @@
         <thead><tr><th>When</th><th>Value</th><th>Status</th><th>Notes</th></tr></thead>
         <tbody>
         {% for rd in v.readings|reverse %}
-        <tr><td>{{ rd.measured_at|dt(tz, now) }}</td><td>{{ rd.value|vital(p) }}</td>
+        <tr><td class="nowrap">{{ rd.measured_at|dt(tz, now) }}</td><td>{{ rd.value|vital(p) }}</td>
           <td>{% if rd.status == "alert" %}<span class="pill status-alert">&#9888; alert</span>{% elif rd.status == "watch" %}<span class="pill status-watch">watch</span>{% elif rd.status == "ok" %}<span class="pill status-ok">&#10003; ok</span>{% else %}—{% endif %}</td>
           <td>{{ rd.check_notes or "" }}</td></tr>
         {% endfor %}

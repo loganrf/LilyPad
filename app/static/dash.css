@@ -1,26 +1,37 @@
-/* Dash: big type for a wall tablet or monitor across the room. */
+/* Dash: big type for a wall tablet or monitor across the room.
+   The text scales with the screen (clamp below), so spacing and sizes inside
+   the dash are in em: the layout grows with the type instead of being
+   overrun by it. Short phrases ("in 2h 30m", "1h 36m ago") never break
+   across lines; longer text wraps between phrases. */
 body.dash {
   min-height: 100vh; display: flex; flex-direction: column; font-size: clamp(16px, 1.6vw, 26px);
   padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
-.dash-head { display: flex; align-items: center; gap: 16px; padding: 12px 20px; }
-.dash-baby { font-weight: 700; font-size: 1.3em; }
-.dash-age { color: var(--muted); font-weight: 400; font-size: 0.75em; margin-left: 6px; }
-.dash-clock { margin-left: auto; font-size: 1.6em; font-weight: 700; font-variant-numeric: tabular-nums; }
-.dash-tools { display: flex; align-items: center; gap: 8px; }
+.dash .nowrap { white-space: nowrap; }
+.dash .pill { font-size: 0.68em; padding: 0.1em 0.65em; vertical-align: 0.12em; }
+
+.dash-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 12px 20px; }
+.dash-baby { flex: 1 1 0; font-weight: 700; font-size: 1.3em; line-height: 1.2; }
+.dash-age { color: var(--muted); font-weight: 400; font-size: 0.75em; margin-left: 0.3em; white-space: nowrap; }
+.dash-clock { font-size: 1.6em; font-weight: 700; line-height: 1.2; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.dash-tools { display: flex; align-items: center; gap: 8px; margin-left: auto; }
 .dash-btn {
   font: inherit; font-size: 0.75em; min-height: 44px; padding: 4px 14px; border-radius: 10px; cursor: pointer;
-  border: 1px solid var(--border); background: var(--surface-2); color: var(--text-2);
+  border: 1px solid var(--border); background: var(--surface-2); color: var(--text-2); white-space: nowrap;
 }
 .dash-conn { color: var(--alert); font-size: 0.8em; }
 .dash-conn.ok { color: var(--ok); }
-.dash-alerts { display: flex; flex-direction: column; gap: 10px; padding: 0 20px 10px; }
+
+.dash-alerts { display: flex; flex-direction: column; gap: 10px; padding: 0 20px 14px; }
 .dash-alert {
-  display: flex; align-items: center; justify-content: space-between; gap: 16px;
-  padding: 14px 18px; border-radius: 16px; border: 2px solid var(--border); background: var(--surface);
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px;
+  padding: 0.6em 0.8em; border-radius: 16px; border: 2px solid var(--border); background: var(--surface);
 }
-.dash-alert-text { display: flex; flex-direction: column; }
-.dash-alert strong { font-size: 1.2em; }
+/* Title and message share a line when there is room (saves height on a
+   wide wall display); the message drops under the title when there isn't. */
+.dash-alert-text { flex: 1 1 16em; min-width: 0; display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 0.75em; }
+.dash-alert strong { font-size: 1.2em; line-height: 1.25; }
+.dash-alert .dash-btn { flex: none; margin-left: auto; }
 .dash-alert.window { border-color: var(--accent); background: var(--accent-2); }
 .dash-alert.due { border-color: var(--warn); background: var(--warn-bg); color: var(--warn); }
 .dash-alert.overdue, .dash-alert.critical { border-color: var(--alert); background: var(--alert-bg); color: var(--alert); }
@@ -28,36 +39,84 @@ body.attention .dash-alert.overdue, body.attention .dash-alert.critical { animat
 @keyframes pulse { 50% { box-shadow: 0 0 0 6px var(--alert-bg); } }
 @media (prefers-reduced-motion: reduce) { body.attention .dash-alert { animation: none; } }
 
+/* Feeding spans the top; the other four tiles sit in one column on a phone,
+   two by two on a portrait tablet, and in a single row on anything wider.
+   Fixed column counts mean no lone tile on a row and no empty column. */
 main.dash-grid {
   max-width: none; margin: 0; width: 100%;
   flex: 1; display: grid; gap: 14px; padding: 0 20px 14px;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); align-content: start;
+  grid-template-columns: minmax(0, 1fr); align-content: start;
 }
-.dash-tile { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 16px 20px; }
-.dash-tile h2 { font-size: 0.8em; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin: 0 0 8px; }
+@media (min-width: 640px) { main.dash-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1000px) { main.dash-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+
+.dash-tile { min-width: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 0.75em 0.9em; }
+.dash-tile h2 { font-size: 0.8em; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin: 0 0 0.5em; }
+
 .dash-feed { grid-column: 1 / -1; }
 .dash-feed.stage-due { border-color: var(--warn); }
 .dash-feed.stage-overdue { border-color: var(--alert); }
 .dash-feed.stage-in_progress { border-color: var(--accent); }
 .dash-big { font-size: 3.2em; font-weight: 800; line-height: 1.05; font-variant-numeric: tabular-nums; }
-.dash-sub { color: var(--text-2); margin-top: 4px; }
-.dash-next { margin-top: 10px; font-size: 1.05em; }
-.dash-hint { color: var(--muted); font-size: 0.9em; margin-top: 4px; }
-.dash-rows > div { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; border-bottom: 1px solid var(--border); }
-.dash-rows > div:last-child { border-bottom: 0; }
-.dash-label { color: var(--muted); }
-.dash-val { font-weight: 700; text-align: right; }
-.dash-flag { margin-top: 8px; color: var(--alert); background: var(--alert-bg); padding: 8px 10px; border-radius: 10px; font-size: 0.9em; }
-.dash-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); gap: 10px; }
-.dash-stat { background: var(--surface-2); border-radius: 12px; padding: 10px; display: flex; flex-direction: column; }
-.dash-stat .v { font-size: 1.7em; font-weight: 800; line-height: 1.1; }
+.dash-sub { color: var(--text-2); margin-top: 0.2em; }
+.dash-next { margin-top: 0.45em; font-size: 1.05em; }
+.dash-next:empty { display: none; }
+.dash-next .pill { margin-right: 0.35em; }
+.dash-hint { color: var(--muted); font-size: 0.9em; margin-top: 0.2em; }
+.dash-hint:empty { display: none; }
+/* Wide screens: "next due" moves to the right of "since last feed", using
+   the width of the tile instead of adding height. */
+@media (min-width: 1000px) {
+  .dash-feed { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 2em; align-items: end; }
+  .dash-feed h2 { grid-column: 1 / -1; }
+  .dash-feed-next { text-align: right; }
+}
+
+/* Diapers: label and time share a line; the detail (colour, kind) goes
+   underneath so it never pushes the time onto two lines. */
+.dash-row { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 0.75em; padding: 0.35em 0; border-bottom: 1px solid var(--border); }
+.dash-row:last-child { border-bottom: 0; }
+.dash-label { color: var(--muted); white-space: nowrap; }
+.dash-val { margin-left: auto; font-weight: 700; text-align: right; }
+.dash-detail { flex-basis: 100%; text-align: right; color: var(--text-2); font-size: 0.85em; line-height: 1.3; }
+.dash-detail:empty { display: none; }
+.dash-flag { margin-top: 0.5em; color: var(--alert); background: var(--alert-bg); padding: 0.4em 0.6em; border-radius: 10px; font-size: 0.85em; line-height: 1.35; }
+
+/* Last 24 hours: always two columns of figures; units are set smaller so
+   "3h 07m" or "10.2 oz" fit the narrowest tile. */
+.dash-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.4em; }
+.dash-stat { min-width: 0; background: var(--surface-2); border-radius: 12px; padding: 0.35em 0.5em 0.4em; display: flex; flex-direction: column; }
+.dash-stat:last-child:nth-child(odd) { grid-column: 1 / -1; }
+.dash-stat .v { font-size: 1.5em; font-weight: 800; line-height: 1.15; font-variant-numeric: tabular-nums; }
+.dash-stat .v small { font-size: 0.62em; font-weight: 700; margin-left: 0.04em; }
 .dash-stat .l { color: var(--muted); font-size: 0.8em; }
+
+/* Up next and vitals: name (and status) on the first line, the time or
+   reading on the second. */
 .dash-list { list-style: none; margin: 0; padding: 0; }
-.dash-list li { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
-.dash-list li:last-child { border-bottom: 0; }
-.dash-li-name { font-weight: 600; }
-.dash-li-val { text-align: right; color: var(--text-2); }
-.dash-li-val .pill { margin: 0 6px; }
-.dash-foot { padding: 8px 20px 16px; color: var(--muted); font-size: 0.75em; }
+.dash-list li { padding: 0.4em 0; border-bottom: 1px solid var(--border); }
+.dash-list li:first-child { padding-top: 0; }
+.dash-list li:last-child { border-bottom: 0; padding-bottom: 0; }
+.dash-li-head { display: flex; align-items: baseline; justify-content: space-between; gap: 0.6em; }
+.dash-li-name { font-weight: 600; min-width: 0; line-height: 1.3; }
+.dash-li-head .pill { flex: none; }
+.dash-li-sub { color: var(--text-2); line-height: 1.35; }
+.dash-li-sub b { color: var(--text); }
+.dash-reading { font-size: 1.15em; }
+.dash-list li.status-alert .dash-reading { color: var(--alert); }
+.dash-list li.status-watch .dash-reading { color: var(--warn); }
+
+.dash-foot { padding: 4px 20px 16px; color: var(--muted); font-size: 0.75em; }
 .dash-foot a { color: var(--muted); }
 .dash-noscript { padding: 20px; }
+
+/* Phones: the clock gets its own row under the name and buttons. */
+@media (max-width: 559px) {
+  .dash-head { padding: 10px 12px; column-gap: 10px; }
+  .dash-clock { order: 3; flex-basis: 100%; font-size: 1.5em; }
+  .dash-btn { min-height: 40px; padding: 4px 10px; }
+  .dash-alerts { padding: 0 12px 10px; }
+  main.dash-grid { gap: 10px; padding: 0 12px 12px; }
+  .dash-big { font-size: 2.6em; }
+  .dash-foot { padding: 4px 12px 12px; }
+}
