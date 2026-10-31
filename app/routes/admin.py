@@ -15,7 +15,7 @@ from fastapi.responses import FileResponse, Response
 from starlette.background import BackgroundTask
 
 from .. import constants as C
-from .. import exports, repo, reports
+from .. import dash_clock, exports, repo, reports
 from .. import settings_store
 from ..describe import describe, timeline as build_timeline
 from ..forms import Form
@@ -96,6 +96,7 @@ def hub(request: Request, conn: sqlite3.Connection = Depends(get_conn)):
                   ped_notes=repo.pediatrician_notes(conn),
                   ntfy_ready=settings.flag("ntfy_enabled") and settings.is_set("ntfy_topic"),
                   webhook_ready=settings.flag("dash_webhook_enabled") and settings.is_set("dash_webhook_url"),
+                  clock_ready=settings.dash_clock_ready,
                   generated_password_pending=password_file)
 
 
@@ -167,8 +168,24 @@ async def settings_save(request: Request, conn: sqlite3.Connection = Depends(get
     updates["dash_webhook_url"] = hook
     updates["dash_sound"] = "1" if form.flag("dash_sound") else "0"
 
+    updates["dash_clock_enabled"] = "1" if form.flag("dash_clock_enabled") else "0"
+    clocks = "\n".join(dash_clock.parse_addresses(form.text("dash_clock_urls", 2000)))
+    errors.extend(dash_clock.address_errors(clocks))
+    if updates["dash_clock_enabled"] == "1" and not clocks:
+        errors.append("Add a Dash clock address to send to Dash clocks.")
+    updates["dash_clock_urls"] = clocks
+    updates["dash_clock_text"] = dash_clock.fit_text(form.text("dash_clock_text", 200)) or dash_clock.DEFAULT_TEXT
+    color = form.text("dash_clock_color", 7) or dash_clock.DEFAULT_COLOR
+    if not dash_clock.COLOR_RE.match(color):
+        errors.append("Dash clock color must look like #FF4080.")
+    updates["dash_clock_color"] = color
+    minutes = form.integer("dash_clock_minutes", "Dash clock minutes", 0, dash_clock.MAX_MINUTES)
+    updates["dash_clock_minutes"] = str(minutes if minutes is not None else 10)
+    updates["dash_clock_skip_window"] = "1" if form.flag("dash_clock_skip_window") else "0"
+
     # Secrets: blank keeps the stored value; the "clear" box removes it.
-    for key, limit in (("ntfy_token", 200), ("ntfy_password", 200), ("dash_webhook_headers", 2000)):
+    for key, limit in (("ntfy_token", 200), ("ntfy_password", 200), ("dash_webhook_headers", 2000),
+                       ("dash_clock_headers", 2000)):
         if form.flag(f"clear_{key}"):
             updates[key] = ""
         elif value := form.text(key, limit):

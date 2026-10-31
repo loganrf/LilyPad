@@ -36,13 +36,22 @@ DEFAULTS: dict[str, str] = {
     "dash_webhook_url": "",
     "dash_webhook_headers": "",
     "dash_sound": "1",
+    # Dash LED clocks (github.com/loganrf/dash)
+    "dash_clock_enabled": "0",
+    "dash_clock_urls": "",
+    "dash_clock_headers": "",
+    "dash_clock_text": "Check {baby}",
+    "dash_clock_color": "#FF4080",
+    "dash_clock_minutes": "10",
+    "dash_clock_skip_window": "1",
     # internal
     "admin_password_hash": "",
     "secret_key": "",
 }
 
 SECRET_KEYS = frozenset(
-    {"ntfy_token", "ntfy_password", "dash_webhook_headers", "admin_password_hash", "secret_key"}
+    {"ntfy_token", "ntfy_password", "dash_webhook_headers", "dash_clock_headers",
+     "admin_password_hash", "secret_key"}
 )
 
 OPEN_WINDOW_MIN_HOURS = 24
@@ -122,6 +131,18 @@ class Settings:
     @property
     def base_url(self) -> str:
         return self["base_url"].strip().rstrip("/")
+
+    @property
+    def dash_clock_minutes(self) -> int:
+        try:
+            minutes = int(self["dash_clock_minutes"])
+        except ValueError:
+            minutes = 10
+        return max(0, min(30, minutes))
+
+    @property
+    def dash_clock_ready(self) -> bool:
+        return self.flag("dash_clock_enabled") and self.is_set("dash_clock_urls")
 
     def is_set(self, key: str) -> bool:
         return bool(self[key].strip())
