@@ -33,7 +33,7 @@ ENTITIES: dict[str, Entity] = {
 
 # Columns a form may write, per table.
 WRITABLE = {
-    "feedings": ("started_at", "ended_at", "method", "side", "bottle_content", "amount_ml",
+    "feedings": ("started_at", "ended_at", "method", "side", "last_side", "bottle_content", "amount_ml",
                  "quality", "issues", "notes", "logged_by"),
     "diapers": ("occurred_at", "kind", "color", "consistency", "amount", "notes", "logged_by"),
     "notes": ("occurred_at", "body", "tags", "for_pediatrician", "discussed", "logged_by"),
@@ -157,12 +157,54 @@ def last_feeding(conn: sqlite3.Connection, completed_only: bool = False) -> dict
     return _row(conn.execute(sql + " ORDER BY started_at DESC, id DESC LIMIT 1"))
 
 
+def final_side(feed: dict | None) -> str | None:
+    """The breast in use last during a feed (left/right), or None if unknown.
+
+    That is the side it ended on, or the side in use now while it runs. A
+    one-sided feed ended on its own side; a "both" feed records it in
+    ``last_side``.
+    """
+    if not feed or feed.get("method") != "breast":
+        return None
+    for side in (feed.get("last_side"), feed.get("side")):
+        if side in C.BREAST_SIDES:
+            return side
+    return None
+
+
+def side_values(side: str | None, last_side: str | None = None) -> dict[str, str | None]:
+    """Columns for a breastfeed's summary side and the side it ended on."""
+    if side in C.BREAST_SIDES:
+        last_side = side
+    elif side != "both" or last_side not in C.BREAST_SIDES:
+        last_side = None
+    return {"side": side, "last_side": last_side}
+
+
+def switch_side(feed: dict, side: str) -> dict[str, str | None]:
+    """Values for changing breast during a running feed.
+
+    Moving to the other breast makes the feed "both" in every summary, while
+    ``last_side`` follows the breast in use so the next feed is suggested
+    from the side reported last. Choosing "both" outright keeps whatever
+    side is known to be in use.
+    """
+    current = final_side(feed)
+    if side == "both":
+        return {"method": "breast", **side_values("both", current)}
+    if side == current:
+        return {}
+    used_before = feed.get("method") == "breast" and feed.get("side") in C.FEED_SIDES
+    return {"method": "breast", **side_values("both" if used_before else side, side)}
+
+
 def last_breast_side(conn: sqlite3.Connection) -> str | None:
-    row = conn.execute(
-        "SELECT side FROM feedings WHERE deleted_at IS NULL AND method = 'breast' AND side IS NOT NULL "
-        "ORDER BY started_at DESC, id DESC LIMIT 1"
-    ).fetchone()
-    return row["side"] if row else None
+    """The side the most recent breastfeed ended on (or is on now)."""
+    row = _row(conn.execute(
+        "SELECT method, side, last_side FROM feedings WHERE deleted_at IS NULL AND method = 'breast' "
+        "AND side IS NOT NULL ORDER BY started_at DESC, id DESC LIMIT 1"
+    ))
+    return final_side(row)
 
 
 def suggested_side(conn: sqlite3.Connection) -> str | None:

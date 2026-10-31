@@ -11,6 +11,7 @@
 <form method="post" action="{{ '/note/%d/edit'|format(note.id) if is_edit else '/note/new' }}" class="stack">
   <input type="hidden" name="next" value="{{ next }}">
   {% if csrf %}<input type="hidden" name="csrf" value="{{ csrf }}">{% endif %}
+  {{ m.form_actions("Save note", next) }}
   <label class="field">
     <span class="label">Note</span>
     <textarea name="body" rows="6" maxlength="10000" required autofocus placeholder="What did you notice? Rash on left cheek, unusual crying after feeds, a question to ask...">{{ note.body or "" }}</textarea>
@@ -39,11 +40,6 @@
 
   {{ m.when_picker("when", when_value, tz, "When", selected_ago=note.when_ago or "0") }}
   {{ m.who_field(caregivers, note.logged_by or who) }}
-
-  <div class="form-actions">
-    <button type="submit" class="btn huge primary">Save note</button>
-    <a class="btn ghost" href="{{ next }}">Cancel</a>
-  </div>
 </form>
 {% if is_edit %}{{ m.delete_form("notes", note.id, next) }}{% endif %}
 {% endblock %}

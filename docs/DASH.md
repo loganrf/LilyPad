@@ -147,8 +147,9 @@ password). Abbreviated:
   "baby": {"name": "Lily", "age": "3 weeks 6 days"},
   "feeding": {
     "active": null,
-    "last": {"started_at": "…", "ended_at": "…", "method": "breast", "side": "left",
-             "duration_min": 20.0, "amount_ml": null, "quality": "Good", "logged_by": "Sam"},
+    "last": {"started_at": "…", "ended_at": "…", "method": "breast", "side": "both",
+             "last_side": "left", "duration_min": 20.0, "amount_ml": null, "quality": "Good",
+             "logged_by": "Sam"},
     "suggested_side": "right"
   },
   "diaper": {"last": {…}, "last_wet": {…}, "last_dirty": {"color": "yellow", "flag": null, …}},
@@ -164,6 +165,11 @@ password). Abbreviated:
 ```
 
 All timestamps are UTC (ISO 8601 with `Z`).
+
+A feed's `side` summarises it (`left`, `right` or `both` if the breast was
+switched mid-feed); `last_side` is the breast in use last (`left`/`right`,
+or `null` if unknown). `suggested_side` is the opposite of the most recent
+breastfeed's `last_side`.
 
 **Home Assistant REST sensor**
 

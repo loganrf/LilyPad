@@ -11,6 +11,7 @@
 <form method="post" action="{{ '/diaper/%d/edit'|format(diaper.id) if is_edit else '/diaper/new' }}" class="stack" data-toggle-form>
   <input type="hidden" name="next" value="{{ next }}">
   {% if csrf %}<input type="hidden" name="csrf" value="{{ csrf }}">{% endif %}
+  {{ m.form_actions("Save", next) }}
   {{ m.radio_tiles("kind", C.DIAPER_KINDS, diaper.kind, "What was in it?", required=True, cls="big") }}
 
   <div data-show-if="kind:dirty,mixed">
@@ -27,11 +28,6 @@
     <textarea name="notes" rows="3" maxlength="2000" placeholder="Optional: rash, unusual smell, mucus...">{{ diaper.notes or "" }}</textarea>
   </label>
   {{ m.who_field(caregivers, diaper.logged_by or who) }}
-
-  <div class="form-actions">
-    <button type="submit" class="btn huge primary">Save</button>
-    <a class="btn ghost" href="{{ next }}">Cancel</a>
-  </div>
 </form>
 {% if is_edit %}{{ m.delete_form("diapers", diaper.id, next) }}{% endif %}
 <p class="fineprint">Color guidance follows common pediatric advice and is not a diagnosis. When in doubt, call your pediatrician.</p>

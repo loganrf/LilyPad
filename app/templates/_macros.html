@@ -110,4 +110,14 @@
 </form>
 {%- endmacro %}
 
+{# The submit button goes first in every form so the defaults can be saved
+   straight away; everything after it is optional detail to adjust. With
+   JavaScript it stays in view (under the top bar) while scrolling. #}
+{% macro form_actions(label, cancel=None) -%}
+<div class="form-actions form-actions-top">
+  <button type="submit" class="btn huge primary">{{ label }}</button>
+  {% if cancel %}<a class="btn ghost" href="{{ cancel }}">Cancel</a>{% endif %}
+</div>
+{%- endmacro %}
+
 {% macro csrf_field(token) -%}<input type="hidden" name="csrf" value="{{ token }}">{%- endmacro %}

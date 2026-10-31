@@ -19,6 +19,7 @@
 
 <form method="post" action="/admin/reminders/{{ reminder.id if is_edit else 'new' }}" class="stack" data-toggle-form>
   {{ m.csrf_field(csrf) }}
+  {{ m.form_actions("Save reminder", "/admin/reminders") }}
   <label class="field"><span class="label">Name</span>
     <input type="text" name="name" value="{{ reminder.name or '' }}" maxlength="60" placeholder="{{ C.REMINDER_KINDS.get(reminder.kind, 'Reminder') }}"></label>
   {{ m.radio_tiles("kind", C.REMINDER_KINDS, reminder.kind, "What does it watch?", required=True) }}
@@ -65,10 +66,6 @@
   <div class="two-col">
     <label class="field"><span class="label">Order</span><input type="number" name="sort_order" value="{{ reminder.sort_order or 0 }}"></label>
     <label class="check-row"><input type="checkbox" name="enabled" value="1" {% if reminder.enabled %}checked{% endif %}> <span>Enabled</span></label>
-  </div>
-  <div class="form-actions">
-    <button type="submit" class="btn huge primary">Save reminder</button>
-    <a class="btn ghost" href="/admin/reminders">Cancel</a>
   </div>
 </form>
 {% if is_edit %}

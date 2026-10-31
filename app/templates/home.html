@@ -35,7 +35,8 @@
   <h2 id="feed-h">Feeding</h2>
   {% if active_feed %}
     <div class="active-feed">
-      <p class="eyebrow">Feeding now · {{ C.FEED_METHODS.get(active_feed.method) }}{% if active_feed.side %} · {{ C.FEED_SIDES.get(active_feed.side) }}{% endif %}</p>
+      {% set on_side = active_feed|final_side %}
+      <p class="eyebrow">Feeding now · {{ C.FEED_METHODS.get(active_feed.method) }}{% if active_feed.side %} · {{ C.FEED_SIDES.get(active_feed.side) }}{% if active_feed.side == "both" and on_side %}, now on {{ C.BREAST_SIDES[on_side]|lower }}{% endif %}{% endif %}</p>
       <p class="timer" data-timer="{{ active_feed.started_at }}">{{ active_feed.started_at|ago(now) }}</p>
       <p class="sub">Started {{ active_feed.started_at|time(tz) }}{% if active_feed.logged_by %} by {{ active_feed.logged_by }}{% endif %}</p>
       {% if stale_active %}<p class="warn-text">This timer has been running a long time. Did you forget to stop it? Reminders treat it as finished.</p>{% endif %}
@@ -44,10 +45,11 @@
       </form>
       {% if active_feed.method == "breast" %}
       <form method="post" action="/feed/{{ active_feed.id }}/side" class="side-switch">
-        <span class="label">Side</span>
-        {% for key, label in C.FEED_SIDES.items() %}
-        <button type="submit" name="side" value="{{ key }}" class="btn small {% if active_feed.side == key %}selected{% endif %}" {% if active_feed.side == key %}aria-pressed="true"{% endif %}>{{ label }}</button>
+        <span class="label">Side now</span>
+        {% for key, label in C.BREAST_SIDES.items() %}
+        <button type="submit" name="side" value="{{ key }}" class="btn small {% if on_side == key %}selected{% endif %}" {% if on_side == key %}aria-pressed="true"{% endif %}>{{ label }}</button>
         {% endfor %}
+        <span class="hint">Switching sides logs this feed as both.</span>
       </form>
       {% endif %}
       {{ m.delete_form("feedings", active_feed.id, "/", "Cancel this feed") }}
@@ -56,7 +58,7 @@
     {% if last_feed %}
     <p class="big-ago"><span data-ago="{{ last_feed.started_at }}">{{ last_feed.started_at|ago(now) }}</span></p>
     <p class="sub">since the last feed started ({{ last_feed.started_at|time(tz) }}) ·
-      {{ C.FEED_METHODS.get(last_feed.method) }}{% if last_feed.side %} {{ C.FEED_SIDES.get(last_feed.side)|lower }}{% endif %}{% if last_feed|feed_minutes %} · {{ (last_feed|feed_minutes)|duration }}{% endif %}{% if last_feed.amount_ml %} · {{ last_feed.amount_ml|volume(volume_unit) }}{% endif %}{% if last_feed.quality %} · {{ C.FEED_QUALITY.get(last_feed.quality)|lower }}{% endif %}
+      {{ C.FEED_METHODS.get(last_feed.method) }}{% if last_feed.side %} {{ C.FEED_SIDES.get(last_feed.side)|lower }}{% if last_feed.side == "both" and last_feed|final_side %} (ended {{ (last_feed|final_side) }}){% endif %}{% endif %}{% if last_feed|feed_minutes %} · {{ (last_feed|feed_minutes)|duration }}{% endif %}{% if last_feed.amount_ml %} · {{ last_feed.amount_ml|volume(volume_unit) }}{% endif %}{% if last_feed.quality %} · {{ C.FEED_QUALITY.get(last_feed.quality)|lower }}{% endif %}
     </p>
     {% else %}
     <p class="big-ago">No feeds yet</p>

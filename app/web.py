@@ -37,7 +37,8 @@ STATIC_DIR = FilePath(__file__).parent / "static"
 
 TOASTS = {
     "feed-started": ("Feed timer started.", "ok"),
-    "feed-stopped": ("Feed stopped. Add details below, or just leave it.", "ok"),
+    "feed-stopped": ("Feed stopped and saved. Add details below if you like.", "ok"),
+    "feed-switched": ("Switched sides. This feed will be logged as both.", "ok"),
     "feed-saved": ("Feed saved.", "ok"),
     "feed-active": ("A feed is already running. Stop it first.", "warn"),
     "diaper-saved": ("Diaper logged.", "ok"),
@@ -258,6 +259,7 @@ env.filters["local_input"] = lambda v, tz: to_local_input(v, tz)
 env.filters["volume"] = lambda ml, unit: format_volume(ml, unit)
 env.filters["vital"] = lambda v, param: format_value(v, param)
 env.filters["feed_minutes"] = repo.feeding_minutes
+env.filters["final_side"] = repo.final_side
 env.filters["urlq"] = lambda v: quote(str(v), safe="")
 
 

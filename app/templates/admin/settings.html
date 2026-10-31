@@ -10,6 +10,7 @@
 
 <form method="post" action="/admin/settings" class="stack settings-form">
   {{ m.csrf_field(csrf) }}
+  {{ m.form_actions("Save settings") }}
 
   <section class="card">
     <h2>Baby &amp; household</h2>
@@ -102,10 +103,6 @@
       {% if secrets_set.dash_clock_headers %}<label class="check-row small"><input type="checkbox" name="clear_dash_clock_headers" value="1"> <span>Remove saved headers</span></label>{% endif %}</label>
     <p class="hint">Each alert queues its own message on the clock (up to 8), and acknowledging in LilyPad doesn't clear it: press the clock's middle button.</p>
   </section>
-
-  <div class="form-actions sticky-actions">
-    <button type="submit" class="btn huge primary">Save settings</button>
-  </div>
 </form>
 
 <form method="post" action="/admin/test-notification" class="card">

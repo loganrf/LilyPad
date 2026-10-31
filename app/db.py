@@ -170,6 +170,12 @@ MIGRATIONS: list[str] = [
     );
     CREATE INDEX idx_alerts_created ON alerts(created_at);
     """,
+    # --- v2: the breast in use last, so a feed that switched sides can be
+    # summarised as "both" and still drive the next side suggestion.
+    """
+    ALTER TABLE feedings ADD COLUMN last_side TEXT;
+    UPDATE feedings SET last_side = side WHERE method = 'breast' AND side IN ('left', 'right');
+    """,
 ]
 
 

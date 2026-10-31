@@ -13,6 +13,7 @@
 {%- endmacro %}
 <form method="post" action="/admin/vitals/{{ param.id if is_edit else 'new' }}" class="stack">
   {{ m.csrf_field(csrf) }}
+  {{ m.form_actions("Save", "/admin/vitals") }}
   <div class="two-col">
     <label class="field"><span class="label">Name</span><input type="text" name="name" value="{{ param.name or '' }}" maxlength="60" required placeholder="Temperature, Heart rate, SpO₂..."></label>
     <label class="field"><span class="label">Unit</span><input type="text" name="unit" value="{{ param.unit or '' }}" maxlength="20" placeholder="°F, bpm, %, lb"></label>
@@ -34,10 +35,6 @@
     <label class="check-row"><input type="checkbox" name="active" value="1" {% if param.active %}checked{% endif %}> <span>Active (shown on the vitals form)</span></label>
   </div>
   <p class="hint">Each reading keeps a copy of the limits in effect when it was logged, so changing limits later does not rewrite history.</p>
-  <div class="form-actions">
-    <button type="submit" class="btn huge primary">Save</button>
-    <a class="btn ghost" href="/admin/vitals">Cancel</a>
-  </div>
 </form>
 {% if is_edit %}
 <form method="post" action="/admin/vitals/{{ param.id }}/delete" data-confirm="Delete this parameter? If it has readings it will be archived instead.">
