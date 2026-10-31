@@ -6,11 +6,18 @@
   <meta name="robots" content="noindex, nofollow">
   <meta name="theme-color" content="#0b0f0d">
   <title>{{ baby_name }} · LilyPad dash</title>
+  <link rel="manifest" href="/static/dash.webmanifest">
   <link rel="icon" href="/static/icons/icon.svg" type="image/svg+xml">
-  <script src="/static/theme.js?v={{ version }}" data-dash></script>
-  <link rel="stylesheet" href="/static/app.css?v={{ version }}">
-  <link rel="stylesheet" href="/static/dash.css?v={{ version }}">
-  <script src="/static/dash.js?v={{ version }}" defer></script>
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="LilyPad Dash">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <script src="/static/theme.js?v={{ asset_version }}" data-dash></script>
+  <link rel="stylesheet" href="/static/app.css?v={{ asset_version }}">
+  <link rel="stylesheet" href="/static/dash.css?v={{ asset_version }}">
+  <script src="/static/dash.js?v={{ asset_version }}" defer></script>
+  <script src="/static/pwa.js?v={{ asset_version }}" defer></script>
 </head>
 <body class="dash" data-sound="{{ '1' if dash_sound else '0' }}" data-tz="{{ settings.timezone_name }}">
   <header class="dash-head">

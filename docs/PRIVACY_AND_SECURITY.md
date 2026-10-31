@@ -30,6 +30,7 @@ situation differs from the default assumptions.
 | Snoozing reminders, acknowledging alerts | No | Anyone who can reach LilyPad, and the ntfy app's action buttons |
 | "Logging as …" name picker | No | Stored in a cookie on that device; a label, not a login |
 | Theme (light/dark/night), dash sound toggle | No | Stored only in that browser |
+| Installing as an app | No | Stores only LilyPad's static files and a generic offline page on the device, never entries |
 | **Anything older than the open window**: viewing, editing, deleting | **Yes** | Admin |
 | **History search** across all time | **Yes** | Admin |
 | **Reports**, including the pediatrician summary and charts | **Yes** | Admin |
@@ -244,6 +245,11 @@ These are on by default and need no configuration:
   ever exposed by mistake.
 - **`Cache-Control: no-store`** on every page, so shared devices and the
   back button don't keep copies of health data.
+- **Installed app stores no care data.** The service worker behind the
+  installable app keeps only static files (styles, scripts, logo) and a
+  generic "Can't reach LilyPad" page on the device. Pages and API
+  responses are never cached, so nothing can be read from a phone's
+  storage or offline. See [INSTALL_APP.md](INSTALL_APP.md).
 - **Escaping.** Everything typed by users is HTML-escaped when shown, and
   CSV exports neutralise spreadsheet formulas (a note starting with `=`
   can't execute in Excel).

@@ -33,6 +33,7 @@ from .timeutil import (
 ADMIN_COOKIE = "lilypad_admin"
 WHO_COOKIE = "lilypad_who"
 TEMPLATE_DIR = FilePath(__file__).parent / "templates"
+STATIC_DIR = FilePath(__file__).parent / "static"
 
 TOASTS = {
     "feed-started": ("Feed timer started.", "ok"),
@@ -232,9 +233,22 @@ def parse_id(value: str) -> int | None:
 
 # --- templates ----------------------------------------------------------------------
 
+def static_fingerprint(directory: FilePath = STATIC_DIR) -> str:
+    """Short hash of every static file: the ?v= cache-buster in page links and
+    the service worker's cache name. Any changed file gets a new URL, so an
+    installed app never keeps serving stale CSS or JS."""
+    digest = hashlib.sha256()
+    for path in sorted(p for p in directory.rglob("*") if p.is_file()):
+        digest.update(path.relative_to(directory).as_posix().encode() + b"\0")
+        digest.update(path.read_bytes())
+    return digest.hexdigest()[:12]
+
+
+ASSET_VERSION = static_fingerprint()
+
 templates = Jinja2Templates(directory=str(TEMPLATE_DIR))
 env = templates.env
-env.globals.update(C=C, version=__version__, timedelta=timedelta)
+env.globals.update(C=C, version=__version__, asset_version=ASSET_VERSION, timedelta=timedelta)
 env.globals["safe_next"] = lambda url, default="/": safe_next(url, default)
 env.filters["dt"] = lambda v, tz, now=None: fmt_datetime(from_db(v) if isinstance(v, str) else v, tz, now)
 env.filters["time"] = lambda v, tz: fmt_time(from_db(v) if isinstance(v, str) else v, tz)

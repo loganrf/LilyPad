@@ -11,9 +11,14 @@
   <link rel="manifest" href="/static/manifest.webmanifest">
   <link rel="icon" href="/static/icons/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
-  <script src="/static/theme.js?v={{ version }}"></script>
-  <link rel="stylesheet" href="/static/app.css?v={{ version }}">
-  <script src="/static/app.js?v={{ version }}" defer></script>
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="LilyPad">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <script src="/static/theme.js?v={{ asset_version }}"></script>
+  <link rel="stylesheet" href="/static/app.css?v={{ asset_version }}">
+  <script src="/static/app.js?v={{ asset_version }}" defer></script>
+  <script src="/static/pwa.js?v={{ asset_version }}" defer></script>
 </head>
 <body class="{% block body_class %}{% endblock %}"{% if live %} data-live="1"{% endif %}>
   <a class="skip" href="#main">Skip to content</a>
@@ -71,6 +76,10 @@
       <noscript><button type="submit" class="btn small">Save</button></noscript>
     </form>
     {% endif %}
+    <p class="install" data-install hidden>
+      <button type="button" class="btn small" data-install-button hidden>Install LilyPad as an app</button>
+      <span data-install-ios hidden>Install LilyPad as an app: tap <strong>Share</strong>, then <strong>Add to Home Screen</strong>.</span>
+    </p>
     <p><a href="/privacy">Privacy &amp; security</a> · LilyPad {{ version }} · Not medical advice — call your pediatrician with concerns.</p>
   </footer>
 </body>

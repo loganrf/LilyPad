@@ -10,12 +10,11 @@ import os
 import secrets
 from contextlib import asynccontextmanager
 from datetime import timedelta
-from pathlib import Path
 from urllib.parse import urlsplit
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse
+from fastapi.responses import PlainTextResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from starlette.datastructures import Headers, MutableHeaders
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -27,10 +26,9 @@ from .notify import Notifier
 from .reminders import tick
 from .security import LoginThrottle, SessionSigner, generate_password, hash_password, host_allowed, origin_allowed
 from .timeutil import to_db, utcnow
-from .web import AdminRequired, AppState, templates
+from .web import STATIC_DIR, AdminRequired, AppState, templates
 
 log = logging.getLogger("lilypad")
-STATIC_DIR = Path(__file__).parent / "static"
 TRASH_KEEP_DAYS = 30
 ALERT_KEEP_DAYS = 365
 
@@ -252,6 +250,23 @@ def create_app(config: Config | None = None, notifier: Notifier | None = None) -
     @app.get("/favicon.ico", include_in_schema=False)
     def favicon():
         return RedirectResponse("/static/icons/icon.svg", status_code=301)
+
+    # Installable app (PWA): the service worker must be served from the root to
+    # control every page, and browsers should always check it for updates.
+    service_worker_js = templates.get_template("sw.js").render()
+
+    @app.get("/sw.js", include_in_schema=False)
+    def service_worker():
+        return Response(service_worker_js, media_type="text/javascript",
+                        headers={"Cache-Control": "no-cache"})
+
+    @app.get("/offline", include_in_schema=False)
+    def offline(request: Request):
+        # Cached on devices by the service worker, so it gets no household data.
+        return templates.TemplateResponse(
+            request, "offline.html",
+            {"request": request, "baby_name": "", "is_admin": False, "path": request.url.path},
+        )
 
     app.add_middleware(GuardMiddleware, config=config)
     return app

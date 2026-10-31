@@ -1,15 +1,31 @@
 {
+  "id": "/",
   "name": "LilyPad",
   "short_name": "LilyPad",
-  "description": "Self-hosted infant care tracker",
+  "description": "Self-hosted infant care tracker: feeds, diapers, vitals, notes and reminders.",
+  "lang": "en",
+  "dir": "ltr",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "background_color": "#0e1411",
   "theme_color": "#14211c",
+  "categories": ["health", "lifestyle", "medical"],
   "icons": [
-    {"src": "/static/icons/icon.svg", "sizes": "any", "type": "image/svg+xml"},
-    {"src": "/static/icons/icon-192.png", "sizes": "192x192", "type": "image/png"},
-    {"src": "/static/icons/icon-512.png", "sizes": "512x512", "type": "image/png"}
+    {"src": "/static/icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any"},
+    {"src": "/static/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+    {"src": "/static/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+    {"src": "/static/icons/maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable"},
+    {"src": "/static/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+  ],
+  "shortcuts": [
+    {"name": "Log a feed", "short_name": "Feed", "url": "/feed/new",
+     "icons": [{"src": "/static/icons/icon-192.png", "sizes": "192x192", "type": "image/png"}]},
+    {"name": "Log a diaper", "short_name": "Diaper", "url": "/diaper/new",
+     "icons": [{"src": "/static/icons/icon-192.png", "sizes": "192x192", "type": "image/png"}]},
+    {"name": "Timeline", "url": "/timeline",
+     "icons": [{"src": "/static/icons/icon-192.png", "sizes": "192x192", "type": "image/png"}]},
+    {"name": "Dash", "url": "/dash",
+     "icons": [{"src": "/static/icons/icon-192.png", "sizes": "192x192", "type": "image/png"}]}
   ]
 }
