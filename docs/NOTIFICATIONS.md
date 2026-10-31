@@ -25,8 +25,8 @@ last feed ─────────────── window opens ───�
 - **Active hours**: outside these times nothing is sent (the status still
   shows on screen); anything that came due is sent when the window opens.
   Wraps past midnight, e.g. `07:00–22:00` or `22:00–06:00`.
-- **Send to**: ntfy (phones) and/or Dash (the built-in `/dash` page and
-  the dash webhook).
+- **Send to**: ntfy (phones) and/or Dash (the built-in `/dash` page, the
+  dash webhook and Dash LED clocks).
 - **Priority**: ntfy priority when due. The heads-up goes one step lower
   and overdue repeats one step higher, so phones can ring louder as it
   gets later.

@@ -10,10 +10,11 @@ combination:
 | [Built-in `/dash` page](#1-the-built-in-dash-page) | A tablet, old phone, or browser in kiosk mode | Live push (Server-Sent Events) |
 | [Dash webhook](#2-dash-webhook-push) | Home Assistant, Node-RED, n8n, a custom display | LilyPad POSTs each alert |
 | [JSON feed](#3-json-feed-poll) | TRMNL, MagicMirror, Home Assistant REST sensors, scripts | Your dashboard polls |
+| [Dash LED clocks](#4-dash-led-clocks) | A [Dash](https://github.com/loganrf/dash) matrix clock in the living room | LilyPad POSTs a short message |
 
 The same reminders that go to ntfy go to the dash. Each reminder has a
-**Dash** switch (Admin → Reminders) controlling both the built-in page and
-the webhook.
+**Dash** switch (Admin → Reminders) controlling the built-in page, the
+webhook and Dash clocks.
 
 ---
 
@@ -199,3 +200,44 @@ something) events, plus a keep-alive comment every 20 seconds.
 curl -X POST "http://192.168.1.20:8080/api/reminders/1/snooze?minutes=15"
 curl -X POST "http://192.168.1.20:8080/api/alerts/42/ack"
 ```
+
+---
+
+## 4. Dash LED clocks
+
+Admin → Settings → **Dash clocks** sends a short scrolling message
+straight to one or more [Dash](https://github.com/loganrf/dash) 32×8 LED
+clocks whenever a reminder or alert fires. No Home Assistant needed.
+
+| Setting | Default | Meaning |
+|---|---|---|
+| Clock addresses | | One per line, up to 8: a clock (`http://192.168.1.63`, `http://dash-a1b2c3.local`) or a Dash server (`http://dash.home.arpa:8080`), which forwards to every clock it manages |
+| Message | `Check {baby}` | `{baby}` is the baby's name, `{title}` the notification title. Printable ASCII; other characters show as `?` |
+| Color | `#FF4080` | Text color |
+| Show for | 10 minutes | 1–30 minutes, or 0 to keep scrolling until someone presses the clock's middle button |
+| Skip the "window open" heads-up | on | Send only due, overdue and vital-sign alerts |
+| Extra headers | | For a Dash server behind authentication, e.g. `Authorization: Basic …` |
+
+LilyPad POSTs to `<address>/api/notify` on each:
+
+```json
+{"text": "Check Lily", "color": "#FF4080", "font": "small", "repeat": 224, "scroll_speed": 25}
+```
+
+Dash keeps text that fits on the display up for `duration` seconds, but
+scrolls longer text a fixed number of times. LilyPad measures the message
+in the clock's small font and works out the number of passes: "Check Lily"
+is 35 px wide, so one pass is 35 + 32 = 67 px, 2.68 s at 25 px/s, and 10
+minutes is 224 passes. The firmware allows at most 255, so long display
+times scroll more slowly instead.
+
+**Good to know**
+
+- The clock queues up to 8 messages. Each alert adds its own, so a due
+  alert followed by an overdue nag can keep it busy for 20 minutes.
+- Acknowledging or snoozing in LilyPad doesn't clear the clock (Dash has no
+  API to cancel a message). Press the clock's middle button.
+- Delivery to each clock is retried once; the result shows under
+  Admin → Notifications as `clock`.
+- The text measurement uses a copy of the Dash firmware's small-font width
+  table (`app/dash_clock.py`). If the firmware font changes, update it there.

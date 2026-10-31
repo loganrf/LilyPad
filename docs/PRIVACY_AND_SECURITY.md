@@ -168,8 +168,8 @@ guess: a few random words works well.
 
 ## 5. Notifications leave your network
 
-Reminders and vital-sign alerts are sent to the **ntfy server** and
-**dash webhook** you configure. Those messages leave LilyPad and may leave
+Reminders and vital-sign alerts are sent to the **ntfy server**,
+**dash webhook** and **Dash clocks** you configure. Those messages leave LilyPad and may leave
 your home.
 
 ### ntfy.sh (the public server)
@@ -214,6 +214,15 @@ you give (see [DASH.md](DASH.md) for the payload). If that URL is a cloud
 service, the same detail-level rules apply, and that service holds the
 data under its own privacy policy. Extra headers you configure (e.g. an
 API token) are stored in the database and never shown again in the UI.
+
+### Dash clocks
+
+Dash clocks get only the message text you write in settings (default
+"Check {baby}"), whatever the detail level: `{baby}` is always filled in,
+and `{title}` follows the detail level. Clocks on your LAN keep it at home;
+if an address points at a Dash server outside your network, choose the
+text accordingly. The clocks' own API has no authentication, so anyone on
+your network can also post to them.
 
 ---
 

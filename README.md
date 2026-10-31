@@ -18,7 +18,8 @@ last eat?"** Runs as a single Docker container on your home network.
   vitals or any routine (vitamin D, medicine…), with a heads-up window
   ("feeding window open"), repeats while overdue, active hours and snooze.
 - **Notifications**: [ntfy](https://ntfy.sh) push to your phones, plus a
-  live **dash** display (`/dash`) for a wall tablet, and an optional
+  live **dash** display (`/dash`) for a wall tablet, messages straight to
+  [Dash](https://github.com/loganrf/dash) LED clocks, and an optional
   webhook for Home Assistant and friends.
 - **Reports & exports** (password protected): day-by-day 24-hour charts,
   feed intervals, stool patterns, vitals trends, a printable pediatrician
@@ -135,7 +136,8 @@ you can set up without exposing LilyPad to the internet:
 - [docs/NOTIFICATIONS.md](docs/NOTIFICATIONS.md): how reminder timing works,
   vital alerts, ntfy setup, self-hosting ntfy.
 - [docs/DASH.md](docs/DASH.md): the built-in `/dash` kiosk page, the
-  webhook payload, the `/api/dash` JSON feed, Home Assistant examples.
+  webhook payload, Dash LED clocks, the `/api/dash` JSON feed, Home
+  Assistant examples.
 
 ## Backups, restore and upgrades
 
@@ -201,7 +203,8 @@ app/
   routes/api.py    /api/dash JSON, /api/events SSE, snooze/ack, /healthz
   routes/admin.py  password-protected settings, reminders, vitals, history, report, export, trash
   reminders.py     reminder engine and notification text
-  notify.py        ntfy, dash webhook and live-dash delivery
+  notify.py        ntfy, dash webhook, Dash clock and live-dash delivery
+  dash_clock.py    Dash LED clock messages: text width, scroll timing
   reports.py       report aggregation and SVG charts
   security.py      password hashing, signed sessions, CSRF, throttling, origin checks
   db.py            schema and migrations

@@ -79,6 +79,30 @@
       {% if secrets_set.dash_webhook_headers %}<label class="check-row small"><input type="checkbox" name="clear_dash_webhook_headers" value="1"> <span>Remove saved headers</span></label>{% endif %}</label>
   </section>
 
+  <section class="card" id="dash-clock">
+    <h2>Dash clocks</h2>
+    <p class="sub">Show a short message on <a href="https://github.com/loganrf/dash">Dash</a> LED matrix clocks whenever a reminder or alert fires, directly, without Home Assistant in between. Follows each reminder's <strong>Dash</strong> switch.</p>
+    <label class="check-row"><input type="checkbox" name="dash_clock_enabled" value="1" {% if settings.flag("dash_clock_enabled") %}checked{% endif %}> <span>Send reminders and alerts to Dash clocks</span></label>
+    <label class="field"><span class="label">Clock addresses <span class="muted">(one per line, up to 8)</span></span>
+      <textarea name="dash_clock_urls" rows="2" placeholder="http://192.168.1.63">{{ settings['dash_clock_urls'] }}</textarea>
+      <span class="hint">A clock (<code>http://192.168.1.63</code> or <code>http://dash-a1b2c3.local</code>) or a Dash server (<code>http://dash.home.arpa:8080</code>), which forwards to every clock it manages. LilyPad posts to <code>/api/notify</code> on each.</span></label>
+    <label class="field"><span class="label">Message</span>
+      <input type="text" name="dash_clock_text" value="{{ settings['dash_clock_text'] }}" maxlength="200" placeholder="Check {baby}">
+      <span class="hint"><code>{baby}</code> becomes the baby's name and <code>{title}</code> the notification title (which follows the detail level above). Plain ASCII; longer text scrolls.</span></label>
+    <div class="two-col">
+      <label class="field"><span class="label">Color</span>
+        <input type="color" name="dash_clock_color" value="{{ settings['dash_clock_color'] }}"></label>
+      <label class="field"><span class="label">Show for (minutes)</span>
+        <input type="number" name="dash_clock_minutes" min="0" max="30" value="{{ settings.dash_clock_minutes }}">
+        <span class="hint">0 = until someone presses the clock's middle button.</span></label>
+    </div>
+    <label class="check-row"><input type="checkbox" name="dash_clock_skip_window" value="1" {% if settings.flag("dash_clock_skip_window") %}checked{% endif %}> <span>Skip the “window open” heads-up (only due, overdue and vital-sign alerts)</span></label>
+    <label class="field"><span class="label">Extra headers <span class="muted">(one per line, optional)</span></span>
+      <textarea name="dash_clock_headers" rows="2" placeholder="{{ 'Saved — leave blank to keep' if secrets_set.dash_clock_headers else 'Authorization: Basic ... (for a Dash server)' }}"></textarea>
+      {% if secrets_set.dash_clock_headers %}<label class="check-row small"><input type="checkbox" name="clear_dash_clock_headers" value="1"> <span>Remove saved headers</span></label>{% endif %}</label>
+    <p class="hint">Each alert queues its own message on the clock (up to 8), and acknowledging in LilyPad doesn't clear it: press the clock's middle button.</p>
+  </section>
+
   <div class="form-actions sticky-actions">
     <button type="submit" class="btn huge primary">Save settings</button>
   </div>
@@ -87,7 +111,7 @@
 <form method="post" action="/admin/test-notification" class="card">
   {{ m.csrf_field(csrf) }}
   <h2>Test delivery</h2>
-  <p class="sub">Save first, then send a test to every configured channel (ntfy, dash webhook and open /dash screens).</p>
+  <p class="sub">Save first, then send a test to every configured channel (ntfy, dash webhook, Dash clocks and open /dash screens).</p>
   <button type="submit" class="btn">Send test notification</button>
 </form>
 

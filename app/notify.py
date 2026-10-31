@@ -1,6 +1,6 @@
-"""Notification delivery: ntfy, the built-in /dash display, and an optional
+"""Notification delivery: ntfy, the built-in /dash display, an optional
 outbound "dash webhook" for external dashboards (Home Assistant, Node-RED,
-TRMNL, MagicMirror...).
+TRMNL, MagicMirror...), and Dash LED clocks.
 
 Every notification is recorded in the ``alerts`` table, published to
 connected /dash screens, and then fanned out to whichever external channels
@@ -20,6 +20,7 @@ from typing import Any
 
 import httpx
 
+from . import dash_clock
 from .events import EventBus
 from .settings_store import Settings
 from .timeutil import now_db
@@ -114,6 +115,15 @@ class Notifier:
         else:
             delivery["webhook"] = self._attempt(lambda: self.send_webhook(settings, alert))
 
+        if not note.to_dash:
+            delivery["clock"] = "off for this reminder"
+        elif not settings.dash_clock_ready:
+            delivery["clock"] = "not configured"
+        elif note.stage == "window" and settings.flag("dash_clock_skip_window"):
+            delivery["clock"] = "skipped (window open)"
+        else:
+            delivery["clock"] = self.send_dash_clocks(settings, alert)
+
         conn.execute("UPDATE alerts SET delivery = ? WHERE id = ?", (json.dumps(delivery), alert_id))
         alert["delivery"] = delivery
         return alert
@@ -181,6 +191,31 @@ class Notifier:
             resp = client.post(url, content=json.dumps(payload), headers=headers)
         if resp.status_code >= 300:
             raise RuntimeError(f"webhook returned HTTP {resp.status_code}")
+        return "sent"
+
+    def send_dash_clocks(self, settings: Settings, alert: dict[str, Any]) -> str:
+        """POST the message to every configured Dash clock or server; summarise the outcome."""
+        payload = dash_clock.build_payload(
+            settings["dash_clock_text"], settings["dash_clock_color"].strip(), settings.dash_clock_minutes,
+            baby=settings.baby_name, title=alert["title"],
+        )
+        headers = {"Content-Type": "application/json", **parse_header_lines(settings["dash_clock_headers"])}
+        addresses = dash_clock.parse_addresses(settings["dash_clock_urls"])[: dash_clock.MAX_ADDRESSES]
+        results = [(a, self._attempt(lambda a=a: self.send_dash_clock(a, payload, headers))) for a in addresses]
+        failed = [f"{a}: {r}" for a, r in results if r != "sent"]
+        if not failed:
+            return "sent" if len(results) == 1 else f"sent to {len(results)} clocks"
+        if len(results) == 1:
+            return results[0][1]
+        return (f"error: {len(failed)} of {len(results)} clocks failed; " + "; ".join(failed))[:300]
+
+    def send_dash_clock(self, address: str, payload: dict[str, Any], headers: dict[str, str]) -> str:
+        if not address.lower().startswith(("http://", "https://")):
+            raise ValueError("Dash clock address must start with http:// or https://")
+        with self._client() as client:
+            resp = client.post(address + "/api/notify", content=json.dumps(payload), headers=headers)
+        if resp.status_code >= 300:
+            raise RuntimeError(f"Dash returned HTTP {resp.status_code}")
         return "sent"
 
     # -- helpers ---------------------------------------------------------------------
