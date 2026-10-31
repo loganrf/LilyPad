@@ -101,12 +101,15 @@
     if (f.active) {
       big.textContent = timer(f.active.started_at);
       big.setAttribute("data-live-timer", f.active.started_at);
-      sub.textContent = "Feeding now · " + f.active.method_label + (f.active.side_label ? " · " + f.active.side_label : "") + " · since " + at(f.active.started_at);
+      sub.textContent = "Feeding now · " + f.active.method_label + (f.active.side_label ? " · " + f.active.side_label : "") +
+        (f.active.side === "both" && f.active.last_side_label ? ", now on " + f.active.last_side_label.toLowerCase() : "") +
+        " · since " + at(f.active.started_at);
     } else {
       big.removeAttribute("data-live-timer");
       if (f.last) {
         big.textContent = ago(f.last.started_at);
-        var bits = [f.last.method_label + (f.last.side_label ? " " + f.last.side_label.toLowerCase() : "")];
+        var bits = [f.last.method_label + (f.last.side_label ? " " + f.last.side_label.toLowerCase() : "") +
+          (f.last.side === "both" && f.last.last_side ? " (ended " + f.last.last_side + ")" : "")];
         if (f.last.duration_min) bits.push(duration(f.last.duration_min));
         if (f.last.amount_ml) bits.push(volume(f.last.amount_ml, data.volume_unit));
         if (f.last.quality) bits.push(f.last.quality.toLowerCase());

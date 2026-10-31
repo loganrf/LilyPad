@@ -227,8 +227,13 @@ main { max-width: 1100px; margin: 0 auto; padding: 12px 16px 24px; }
 .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
 .actions .inline { display: contents; }
 .actions form.inline > .btn { flex: 1 1 120px; }
-.form-actions { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
-.sticky-actions { position: sticky; bottom: 0; background: linear-gradient(transparent, var(--bg) 30%); padding: 16px 0 8px; }
+/* Save comes first in a form; the options to adjust follow it. With JS the
+   bar stays pinned under the top bar (app.js measures it into --topbar-h). */
+.form-actions { display: flex; gap: 10px; align-items: stretch; }
+.form-actions .btn.huge { width: auto; flex: 1; min-height: 60px; }
+.form-actions .btn.ghost { flex: 0 0 auto; }
+.form-actions-top { padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+.js .form-actions-top { position: sticky; top: var(--topbar-h, 0px); z-index: 4; background: var(--bg); padding-top: 8px; margin-top: -8px; }
 .delete-form { margin-top: 20px; }
 
 /* --- home ---------------------------------------------------------------------- */
@@ -253,6 +258,7 @@ main { max-width: 1100px; margin: 0 auto; padding: 12px 16px 24px; }
 .error-text { color: var(--alert); }
 .side-switch { display: flex; align-items: center; gap: 8px; margin: 12px 0; flex-wrap: wrap; }
 .side-switch .label { color: var(--muted); }
+.side-switch .hint { flex-basis: 100%; margin: 0; }
 .mini-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); gap: 8px; margin: 0 0 6px; }
 .mini-stats div { background: var(--surface-2); border-radius: 10px; padding: 8px 10px; }
 .mini-stats dt { font-size: 0.8rem; color: var(--muted); }
@@ -469,10 +475,6 @@ input::placeholder, textarea::placeholder { color: var(--muted); }
   filter: grayscale(1) sepia(1) hue-rotate(-40deg) saturate(2.5) brightness(0.55);
 }
 
-@media (min-width: 720px) {
-  .form-actions { flex-direction: row; }
-  .form-actions .btn.huge { width: auto; flex: 1; }
-}
 @media (prefers-reduced-motion: reduce) {
   .btn:active { transform: none; }
 }

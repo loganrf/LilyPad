@@ -121,6 +121,17 @@
     });
   }
 
+  // A form's Save bar is pinned just under the (sticky) top bar, whose height
+  // changes as it wraps on narrow screens.
+  function trackTopbar() {
+    var bar = document.querySelector(".topbar");
+    if (!bar || !document.querySelector(".form-actions-top")) return;
+    var set = function () { document.documentElement.style.setProperty("--topbar-h", bar.offsetHeight + "px"); };
+    set();
+    if (window.ResizeObserver) new ResizeObserver(set).observe(bar);
+    else window.addEventListener("resize", set);
+  }
+
   // Live refresh: when the other parent logs something, reload this screen.
   function bindLive() {
     if (!document.body.hasAttribute("data-live") || !window.EventSource) return;
@@ -149,6 +160,7 @@
 
   document.addEventListener("DOMContentLoaded", function () {
     document.documentElement.classList.add("js");
+    trackTopbar();
     refreshTimes();
     refreshTimers();
     setInterval(refreshTimes, 30000);

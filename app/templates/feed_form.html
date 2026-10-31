@@ -17,10 +17,15 @@
 <form method="post" action="{{ '/feed/%d/edit'|format(feed.id) if is_edit else '/feed/new' }}" class="stack" data-toggle-form>
   <input type="hidden" name="next" value="{{ next }}">
   {% if csrf %}<input type="hidden" name="csrf" value="{{ csrf }}">{% endif %}
+  {{ m.form_actions("Save feed", next) }}
   {{ m.radio_tiles("method", C.FEED_METHODS, method, "Type", required=True, cls="big") }}
 
-  <div data-show-if="method:breast">
+  <div data-show-if="method:breast" class="stack">
     {{ m.radio_tiles("side", C.FEED_SIDES, feed.side, "Side" ~ (" (suggested: " ~ C.FEED_SIDES[suggested_side] ~ ")" if suggested_side and not is_edit else "")) }}
+    <div data-show-if="side:both">
+      {{ m.radio_tiles("last_side", C.BREAST_SIDES, feed.last_side, "On now" if is_edit and not feed.ended_at else "Finished on") }}
+      <span class="hint">The next feed suggests starting on the other side.</span>
+    </div>
   </div>
 
   <div data-show-if="method:bottle">
@@ -56,11 +61,6 @@
     <textarea name="notes" rows="3" maxlength="2000" placeholder="Optional">{{ feed.notes or "" }}</textarea>
   </label>
   {{ m.who_field(caregivers, feed.logged_by or who) }}
-
-  <div class="form-actions">
-    <button type="submit" class="btn huge primary">Save feed</button>
-    <a class="btn ghost" href="{{ next }}">Cancel</a>
-  </div>
 </form>
 {% if is_edit %}{{ m.delete_form("feedings", feed.id, next) }}{% endif %}
 {% endblock %}

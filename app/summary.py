@@ -26,6 +26,8 @@ def _feed_json(row: dict | None) -> dict | None:
         "method_label": C.FEED_METHODS.get(row["method"], row["method"]),
         "side": row["side"],
         "side_label": C.FEED_SIDES.get(row["side"] or "", ""),
+        "last_side": (last := repo.final_side(row)),
+        "last_side_label": C.BREAST_SIDES.get(last or "", ""),
         "amount_ml": row["amount_ml"],
         "duration_min": round(m, 1) if (m := repo.feeding_minutes(row)) is not None else None,
         "quality": C.FEED_QUALITY.get(row["quality"]) if row["quality"] else None,

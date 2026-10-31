@@ -4,9 +4,10 @@ A self-hosted care tracker for a newborn, built for sleep-deprived parents:
 **one tap to log, no password to type, and a clear answer to "when did she
 last eat?"** Runs as a single Docker container on your home network.
 
-- **Feeds**: one-tap timers for left/right, bottle amounts (ml or oz),
-  duration, how it went (poor → great) and notable issues (spit-up, poor
-  latch, fussy…). Suggests the next breast side.
+- **Feeds**: one-tap timers for left/right (switch sides mid-feed and it's
+  logged as both), bottle amounts (ml or oz), duration, how it went
+  (poor → great) and notable issues (spit-up, poor latch, fussy…). Suggests
+  the next breast side from the one you finished on.
 - **Diapers**: one-tap wet; dirty with colour, consistency and amount.
   Gently flags stool colours worth a call to the pediatrician.
 - **Vitals you define**: temperature, weight, heart rate, SpO₂, anything.
@@ -77,8 +78,9 @@ then in **Settings**:
 | To… | Do this |
 |---|---|
 | Start a breastfeed | Home → **▶ Left** / **▶ Right** (the suggested side is highlighted) |
-| Finish it | **Stop feed**, then optionally rate it and add notes |
-| Log a bottle | **Bottle** → tap an amount chip → **Save** |
+| Switch sides | Tap the other side under the timer. The feed is logged as **both**; the next suggestion starts from the side you finished on |
+| Finish it | **Stop feed** (it's saved). Optionally rate it, add notes, then **Save feed** |
+| Log a bottle | **Bottle** → **Save** at the top, after tapping an amount chip below it |
 | Log a feed after the fact | **Log a past feed** → "30m ago" chip → duration chip |
 | Log a wet diaper | **Wet** (one tap, done) |
 | Log a dirty diaper | **Dirty** → colour, consistency → **Save** |

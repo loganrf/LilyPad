@@ -16,6 +16,14 @@ FEED_SIDES = {
     "both": "Both",
 }
 
+# The breast actually in use at a given moment. A feed's ``side`` summarises
+# the whole feed (switching mid-feed makes it "both"); ``last_side`` is the
+# one of these that was in use last and drives the next suggestion.
+BREAST_SIDES = {
+    "left": "Left",
+    "right": "Right",
+}
+
 BOTTLE_CONTENTS = {
     "breast_milk": "Breast milk",
     "formula": "Formula",

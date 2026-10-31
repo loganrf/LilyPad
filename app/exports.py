@@ -51,10 +51,10 @@ def export_csv(conn: sqlite3.Connection, settings: Settings, name: str, since: s
         rows = repo.list_range(conn, "feedings", since, until, order="ASC")
         return _csv(
             ["id", f"started ({tzname})", f"ended ({tzname})", "started_utc", "duration_min", "method", "side",
-             "bottle_content", "amount_ml", "quality", "issues", "notes", "logged_by"],
+             "last_side", "bottle_content", "amount_ml", "quality", "issues", "notes", "logged_by"],
             ([r["id"], _local(r["started_at"], settings), _local(r["ended_at"], settings), r["started_at"],
               round(m, 1) if (m := repo.feeding_minutes(r)) is not None else "",
-              r["method"], r["side"] or "", r["bottle_content"] or "",
+              r["method"], r["side"] or "", repo.final_side(r) or "", r["bottle_content"] or "",
               r["amount_ml"] if r["amount_ml"] is not None else "",
               C.FEED_QUALITY.get(r["quality"], "") if r["quality"] else "",
               r["issues"], r["notes"], r["logged_by"]] for r in rows),

@@ -84,7 +84,7 @@ async def feed_start(request: Request, conn: sqlite3.Connection = Depends(get_co
     if repo.active_feeding(conn) and not is_stale_active(repo.active_feeding(conn), now(request)):
         return redirect("/", "feed-active")
     feed_id = repo.insert(conn, "feedings", {
-        "started_at": to_db(now(request)), "ended_at": None, "method": method, "side": side,
+        "started_at": to_db(now(request)), "ended_at": None, "method": method, **repo.side_values(side),
         "logged_by": who_logged(request, conn),
     })
     changed(request, "feedings")
@@ -112,9 +112,11 @@ async def feed_side(feed_id: EntryId, request: Request, conn: sqlite3.Connection
         raise HTTPException(404, "That feed no longer exists.")
     ensure_visible(request, conn, feed["started_at"], now(request), form.text("csrf", 200))
     side = form.choice("side", C.FEED_SIDES)
-    if side and feed["ended_at"] is None:
-        repo.update(conn, "feedings", feed_id, {"side": side, "method": "breast"})
+    if side and feed["ended_at"] is None and (values := repo.switch_side(feed, side)):
+        repo.update(conn, "feedings", feed_id, values)
         changed(request, "feedings")
+        if values.get("side") == "both":
+            return redirect("/", "feed-switched")
     return redirect("/")
 
 
@@ -138,7 +140,8 @@ def _feed_values(form: Form, request: Request, conn, existing: dict | None) -> d
         "started_at": to_db(started),
         "ended_at": to_db(ended) if ended else None,
         "method": method,
-        "side": form.choice("side", C.FEED_SIDES) if method == "breast" else None,
+        **repo.side_values(form.choice("side", C.FEED_SIDES) if method == "breast" else None,
+                           form.choice("last_side", C.BREAST_SIDES, "which side it ended on")),
         "bottle_content": form.choice("bottle_content", C.BOTTLE_CONTENTS) if method == "bottle" else None,
         "amount_ml": amount if method != "breast" else None,
         "quality": form.choice("quality", C.FEED_QUALITY),

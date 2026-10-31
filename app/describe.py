@@ -40,6 +40,9 @@ def describe(conn: sqlite3.Connection, table: str, row: dict, settings: Settings
             item["status"] = "active"
         elif minutes is not None and minutes > 0:
             bits.append(fmt_duration(minutes))
+        last = repo.final_side(row)
+        if row["side"] == "both" and last:
+            bits.append(("now on " if row["ended_at"] is None else "ended ") + last)
         if row["amount_ml"]:
             content = C.BOTTLE_CONTENTS.get(row["bottle_content"] or "", "")
             bits.append(format_volume(row["amount_ml"], settings.volume_unit) + (f" {content.lower()}" if content else ""))
