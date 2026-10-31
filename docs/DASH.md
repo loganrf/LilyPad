@@ -36,8 +36,12 @@ is green while connected).
 
 **Tips for a wall display**
 
+- Install `/dash` as its own app (**LilyPad Dash**): it opens full screen,
+  straight to the dash, and shows a "Can't reach LilyPad" screen that
+  reconnects by itself after a power cut or Wi-Fi drop. See
+  [INSTALL_APP.md](INSTALL_APP.md).
 - The page asks the browser to keep the screen awake (Screen Wake Lock)
-  while it's visible. Kiosk browsers such as *Fully Kiosk Browser*
+  while it's visible (browsers allow this only over HTTPS). Kiosk browsers such as *Fully Kiosk Browser*
   (Android) or Guided Access (iPad) keep it in front.
 - Tap **Sound: off** once to enable a chime for new alerts (browsers only
   allow sound after a tap). An admin can disable chimes entirely in

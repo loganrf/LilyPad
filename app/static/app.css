@@ -188,6 +188,9 @@ main { max-width: 1100px; margin: 0 auto; padding: 12px 16px 24px; }
 .footer a { color: var(--text-2); }
 .who { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
 .who select { min-height: 40px; }
+.install { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0 0 8px; }
+.offline { margin-top: 24px; }
+.offline ul { padding-left: 1.2em; }
 
 .admin-banner {
   display: flex; gap: 10px; align-items: center; justify-content: center; flex-wrap: wrap;

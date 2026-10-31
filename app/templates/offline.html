@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{#- Stored on the device by the service worker and shown when the server can't
+    be reached. It must stay free of household data: render it with no baby
+    name, caregivers or entries. -#}
+{% block title %}Can't reach LilyPad{% endblock %}
+{% block content %}
+<section class="card narrow offline" data-offline>
+  <h1>Can't reach LilyPad</h1>
+  <p>This device can't connect to your LilyPad server right now.</p>
+  <ul>
+    <li>Are you on your home Wi-Fi, or connected to your VPN?</li>
+    <li>Is the computer running LilyPad switched on?</li>
+  </ul>
+  <p><a class="btn primary" href="">Try again</a></p>
+  <p class="fineprint">This page reconnects by itself once LilyPad is reachable. Nothing can be logged until then, and no care data is stored on this device.</p>
+</section>
+{% endblock %}

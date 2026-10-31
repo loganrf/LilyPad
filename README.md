@@ -24,6 +24,9 @@ last eat?"** Runs as a single Docker container on your home network.
   feed intervals, stool patterns, vitals trends, a printable pediatrician
   summary, CSV/JSON/SQLite exports.
 - **Night mode**: a dim red theme for the 3 a.m. feed, per device.
+- **Installable app**: put LilyPad (and the dash) on your home screen. It
+  opens in its own window, with shortcuts for logging and a friendly
+  screen when you're out of range.
 
 > **Privacy first:** logging is deliberately password-free, so anyone who
 > can reach LilyPad can see and change recent entries. Settings, reports,
@@ -48,8 +51,11 @@ docker compose up -d --build
 docker compose logs lilypad | grep -i password
 ```
 
-Open `http://<that-machine's-IP>:8080` on each phone and **Add to Home
-Screen** for an app-like icon.
+Open `http://<that-machine's-IP>:8080` on each phone and install it as an
+app: on iPhone, **Share → Add to Home Screen**; on Android, **Install
+LilyPad as an app** at the bottom of the page. Android and computers need
+an `https://` address for a full install. See
+[docs/INSTALL_APP.md](docs/INSTALL_APP.md) for both.
 
 The log line shows a generated **admin password** (also saved as
 `INITIAL_ADMIN_PASSWORD.txt` in the data volume). Use it to open **Admin**,
@@ -112,6 +118,17 @@ Notable in-app settings:
 - **Base URL**: how phones reach LilyPad; enables tap-to-open and Snooze
   buttons in notifications.
 - **Notification detail**: Minimal / Standard / Detailed.
+
+## Installing as an app
+
+LilyPad is an installable web app (PWA): its own icon and window,
+long-press shortcuts (**Log a feed**, **Log a diaper**, **Timeline**,
+**Dash**), and a "Can't reach LilyPad" screen that reconnects by itself.
+The dash installs separately as a full-screen app for wall tablets. Only
+static files and that generic screen are stored on the device, never care
+data. iPhone works over plain HTTP. Android and computers need HTTPS, which
+you can set up without exposing LilyPad to the internet:
+[docs/INSTALL_APP.md](docs/INSTALL_APP.md).
 
 ## Reminders, notifications and the dash
 
@@ -188,7 +205,7 @@ app/
   reports.py       report aggregation and SVG charts
   security.py      password hashing, signed sessions, CSRF, throttling, origin checks
   db.py            schema and migrations
-  templates/, static/
-docs/              privacy & security, notifications, dash integrations
+  templates/, static/   (templates/sw.js + static/pwa.js: installable app / offline page)
+docs/              privacy & security, notifications, dash integrations, installing as an app
 tests/             pytest suite
 ```
