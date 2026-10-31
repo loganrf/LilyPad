@@ -137,6 +137,7 @@ body {
   color: var(--text);
   font: 17px/1.45 var(--font);
   padding-bottom: env(safe-area-inset-bottom);
+  overflow-wrap: break-word; /* a long word or URL wraps instead of widening the page */
 }
 a { color: var(--accent); }
 :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
@@ -149,6 +150,7 @@ pre { padding: 0.8em; overflow-x: auto; }
 .sr-only, .skip:not(:focus) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .skip:focus { position: fixed; top: 8px; left: 8px; z-index: 10; background: var(--surface); padding: 8px 12px; }
 .muted { color: var(--muted); }
+.nowrap { white-space: nowrap; }
 .sub { color: var(--text-2); margin: 0.2em 0 0.8em; }
 .fineprint { color: var(--muted); font-size: 0.85rem; margin: 1.5em 0; }
 .hint { display: block; color: var(--muted); font-size: 0.88rem; margin-top: 0.3em; }
@@ -187,7 +189,8 @@ main { max-width: 1100px; margin: 0 auto; padding: 12px 16px 24px; }
 .footer { max-width: 1100px; margin: 0 auto; padding: 8px 16px 32px; color: var(--muted); font-size: 0.85rem; }
 .footer a { color: var(--text-2); }
 .who { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
-.who select { min-height: 40px; }
+.who label { white-space: nowrap; }
+.who select { min-height: 40px; width: auto; min-width: 10em; }
 .install { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0 0 8px; }
 .offline { margin-top: 24px; }
 .offline ul { padding-left: 1.2em; }
@@ -219,7 +222,7 @@ main { max-width: 1100px; margin: 0 auto; padding: 12px 16px 24px; }
 .btn small { font-weight: 400; font-size: 0.75rem; color: inherit; opacity: 0.85; }
 .btn.big { min-height: 64px; font-size: 1.1rem; flex: 1 1 120px; }
 .btn.huge { min-height: 68px; font-size: 1.2rem; width: 100%; }
-.btn.small { min-height: 38px; padding: 4px 12px; font-size: 0.9rem; }
+.btn.small { min-height: 38px; padding: 4px 12px; font-size: 0.9rem; white-space: nowrap; }
 .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
 .btn.ghost { background: transparent; }
 .btn.danger { color: var(--alert); border-color: var(--alert); }
@@ -239,11 +242,13 @@ main { max-width: 1100px; margin: 0 auto; padding: 12px 16px 24px; }
 /* --- home ---------------------------------------------------------------------- */
 .alerts { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
 .alert {
-  display: flex; align-items: center; gap: 12px; justify-content: space-between;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; justify-content: space-between;
   padding: 12px 14px; border-radius: var(--radius); border: 1px solid var(--border);
   background: var(--surface);
 }
-.alert > div { display: flex; flex-direction: column; }
+/* On a phone the button drops under the message instead of squeezing it. */
+.alert > div { display: flex; flex-direction: column; flex: 1 1 14em; min-width: 0; }
+.alert > form { margin-left: auto; }
 .alert-window { background: var(--accent-2); border-color: var(--accent); }
 .alert-due { background: var(--warn-bg); border-color: var(--warn); color: var(--warn); }
 .alert-overdue, .alert-critical { background: var(--alert-bg); border-color: var(--alert); color: var(--alert); }
@@ -259,28 +264,32 @@ main { max-width: 1100px; margin: 0 auto; padding: 12px 16px 24px; }
 .side-switch { display: flex; align-items: center; gap: 8px; margin: 12px 0; flex-wrap: wrap; }
 .side-switch .label { color: var(--muted); }
 .side-switch .hint { flex-basis: 100%; margin: 0; }
-.mini-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); gap: 8px; margin: 0 0 6px; }
-.mini-stats div { background: var(--surface-2); border-radius: 10px; padding: 8px 10px; }
+/* Figure tiles: a box moves to the next row before its value ("1h 36m ago",
+   "3h 07m", "10.2 oz") would break across two lines. */
+.mini-stats { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 6px; }
+.mini-stats div { flex: 1 1 90px; background: var(--surface-2); border-radius: 10px; padding: 8px 10px; }
 .mini-stats dt { font-size: 0.8rem; color: var(--muted); }
-.mini-stats dd { margin: 0; font-weight: 600; }
-.tiles-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(86px, 1fr)); gap: 8px; }
-.stat { background: var(--surface-2); border-radius: 12px; padding: 10px; display: flex; flex-direction: column; }
-.stat .v { font-size: 1.5rem; font-weight: 700; line-height: 1.1; }
+.mini-stats dd { margin: 0; font-weight: 600; white-space: nowrap; }
+.tiles-stats { display: flex; flex-wrap: wrap; gap: 8px; }
+.stat { flex: 1 1 86px; background: var(--surface-2); border-radius: 12px; padding: 10px; display: flex; flex-direction: column; }
+.stat .v { font-size: 1.5rem; font-weight: 700; line-height: 1.1; white-space: nowrap; }
 .stat .l { font-size: 0.82rem; color: var(--muted); }
 .reminder-line {
   display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px;
   margin-top: 10px; padding: 8px 10px; border-radius: 10px; background: var(--surface-2);
 }
-.rl-main { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+/* The status pill drops under a long name rather than squeezing it. */
+.rl-main { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; font-weight: 600; min-width: 0; }
 .rl-detail { color: var(--text-2); font-size: 0.92rem; flex: 1 1 200px; }
 .routine { display: flex; align-items: center; gap: 10px; }
-.routine .reminder-line { flex: 1; margin-top: 6px; }
+.routine .reminder-line { flex: 1; min-width: 0; margin-top: 6px; }
+.routine > form { flex: none; }
 .vital-list { list-style: none; margin: 0; padding: 0; }
 .vital { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; padding: 8px 0; border-bottom: 1px solid var(--border); }
 .vital:last-child { border-bottom: 0; }
 .vital-name { font-weight: 600; min-width: 7em; }
-.vital-value { font-size: 1.2rem; font-weight: 700; }
-.vital-when { color: var(--muted); font-size: 0.85rem; margin-left: auto; }
+.vital-value { font-size: 1.2rem; font-weight: 700; white-space: nowrap; }
+.vital-when { color: var(--muted); font-size: 0.85rem; margin-left: auto; white-space: nowrap; }
 
 /* --- pills -------------------------------------------------------------------- */
 .pill {
@@ -407,6 +416,9 @@ input::placeholder, textarea::placeholder { color: var(--muted); }
 .table th, .table td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
 .table thead th { font-size: 0.82rem; color: var(--muted); font-weight: 600; white-space: nowrap; }
 .table.numeric td, .table.numeric th { font-variant-numeric: tabular-nums; }
+/* Dense admin tables scroll sideways on a phone (inside .table-wrap) with
+   readable columns, instead of squeezing to one word per line. */
+@media (max-width: 639px) { .table.wide { min-width: 44rem; } }
 .table tr.muted td { color: var(--muted); }
 .label-inline { color: var(--muted); }
 .ped-list { list-style: none; padding: 0; margin: 0; }
@@ -463,6 +475,15 @@ input::placeholder, textarea::placeholder { color: var(--muted); }
   details > summary { display: none; }
   details > * { display: block !important; }
   a { color: inherit; text-decoration: none; }
+}
+
+/* Phones: an entry's time goes above its title so the text gets the width. */
+@media (max-width: 479px) {
+  .entry { grid-template-columns: 1.4em minmax(0, 1fr) auto; grid-template-areas: ". time edit" "icon body edit"; row-gap: 0; }
+  .entry-time { grid-area: time; font-size: 0.82rem; padding-top: 0; }
+  .entry-icon { grid-area: icon; }
+  .entry-body { grid-area: body; }
+  .entry-edit { grid-area: edit; }
 }
 
 @media (max-width: 559px) {

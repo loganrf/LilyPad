@@ -35,16 +35,21 @@
   <main class="dash-grid">
     <section class="dash-tile dash-feed">
       <h2>Feeding</h2>
-      <div class="dash-big" data-feed-big>—</div>
-      <div class="dash-sub" data-feed-sub></div>
-      <div class="dash-next" data-feed-next></div>
+      <div class="dash-feed-now">
+        <div class="dash-big" data-feed-big>—</div>
+        <div class="dash-sub" data-feed-sub></div>
+      </div>
+      <div class="dash-feed-next">
+        <div class="dash-next" data-feed-next></div>
+        <div class="dash-hint" data-feed-hint></div>
+      </div>
     </section>
     <section class="dash-tile dash-diaper">
       <h2>Diapers</h2>
       <div class="dash-rows">
-        <div><span class="dash-label">Last change</span><span class="dash-val" data-diaper-last>—</span></div>
-        <div><span class="dash-label">Last wet</span><span class="dash-val" data-diaper-wet>—</span></div>
-        <div><span class="dash-label">Last poop</span><span class="dash-val" data-diaper-dirty>—</span></div>
+        <div class="dash-row"><span class="dash-label">Last change</span><span class="dash-val" data-diaper-last>—</span><span class="dash-detail" data-diaper-last-detail></span></div>
+        <div class="dash-row"><span class="dash-label">Last wet</span><span class="dash-val" data-diaper-wet>—</span></div>
+        <div class="dash-row"><span class="dash-label">Last poop</span><span class="dash-val" data-diaper-dirty>—</span><span class="dash-detail" data-diaper-dirty-detail></span></div>
       </div>
       <div class="dash-flag" data-diaper-flag hidden></div>
     </section>
