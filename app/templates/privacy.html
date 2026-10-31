@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Privacy &amp; security · LilyPad{% endblock %}
+{% block content %}
+<article class="prose">
+<h1>Privacy &amp; security</h1>
+<p>LilyPad is built for tired parents: <strong>logging needs no password</strong>, so anyone who can open this page can use it. That convenience has consequences you should understand. The full write-up is in <code>docs/PRIVACY_AND_SECURITY.md</code> in the project.</p>
+
+<h2>Open to anyone who can reach LilyPad</h2>
+<ul>
+  <li>The home screen, the live dash (<code>/dash</code>) and its JSON feed (<code>/api/dash</code>).</li>
+  <li>The timeline of the last <strong>{{ window_hours }} hours</strong>, including notes.</li>
+  <li>Adding, editing and deleting entries from that window (deletes are reversible by an admin for 30 days).</li>
+  <li>Snoozing reminders and acknowledging alerts.</li>
+</ul>
+
+<h2>Requires the admin password</h2>
+<ul>
+  <li>Anything older than {{ window_hours }} hours: full history, search and editing.</li>
+  <li>Reports (including the pediatrician summary) and all exports and backups.</li>
+  <li>Settings: baby details, time zone, notification and dash configuration, reminder schedules, vital parameters and their limits.</li>
+  <li>The trash and the notification delivery log.</li>
+</ul>
+
+<h2>What that means in practice</h2>
+<ul>
+  <li><strong>Keep LilyPad on your home network or a private VPN</strong> (WireGuard, Tailscale...). Do not port-forward it to the internet.</li>
+  <li>Anyone on your Wi-Fi (guests, a compromised smart device) can see and change recent entries.</li>
+  <li>Data is stored unencrypted in one SQLite file in the Docker volume. Protect and back up that volume.</li>
+  <li>ntfy notifications travel through the ntfy server you choose. On the public ntfy.sh, anyone who guesses your topic can read them. Use a long random topic, an access token, or self-host ntfy, and pick a notification detail level in settings.</li>
+  <li>LilyPad never sends data anywhere except the ntfy server and dash webhook you configure. It loads no third-party scripts, fonts or trackers.</li>
+</ul>
+<p class="fineprint">LilyPad is a record-keeping tool, not a medical device. Example limits are not medical advice; confirm thresholds with your pediatrician.</p>
+</article>
+{% endblock %}

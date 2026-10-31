@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block title %}Edit routine · LilyPad{% endblock %}
+{% block content %}
+{% set next = safe_next(request.query_params.get("next")) %}
+<h1>{{ task.task_name }}</h1>
+{% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
+<form method="post" action="/task/{{ task.id }}/edit" class="stack">
+  <input type="hidden" name="next" value="{{ next }}">
+  {% if csrf %}<input type="hidden" name="csrf" value="{{ csrf }}">{% endif %}
+  {{ m.when_picker("when", task.when_at or task.done_at, tz, "Done at") }}
+  <label class="field">
+    <span class="label">Notes</span>
+    <textarea name="notes" rows="3" maxlength="2000">{{ task.notes or "" }}</textarea>
+  </label>
+  {{ m.who_field(caregivers, task.logged_by or who) }}
+  <div class="form-actions">
+    <button type="submit" class="btn huge primary">Save</button>
+    <a class="btn ghost" href="{{ next }}">Cancel</a>
+  </div>
+</form>
+{{ m.delete_form("task_logs", task.id, next) }}
+{% endblock %}

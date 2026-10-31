@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block title %}Timeline · LilyPad{% endblock %}
+{% block content %}
+<h1>Timeline</h1>
+<p class="sub">The last {{ window_hours }} hours. Older history, reports and exports are in the <a href="/admin/history">admin area</a>.</p>
+<nav class="filter-row" aria-label="Filter">
+  {% for f in filters %}
+  <a class="chip {% if f == kind %}selected{% endif %}" href="/timeline?type={{ f }}" {% if f == kind %}aria-current="true"{% endif %}>{{ f|capitalize }}</a>
+  {% endfor %}
+</nav>
+{% set next = "/timeline?type=" ~ kind %}
+{% if not days %}
+<p class="muted">Nothing logged in this window.</p>
+{% endif %}
+{% for day, items in days %}
+<section class="day">
+  <h2 class="day-h">{{ items[0].time|day(tz) }}</h2>
+  <ul class="entries">{% for item in items %}{{ m.entry_item(item, tz, now, next) }}{% endfor %}</ul>
+</section>
+{% endfor %}
+{% endblock %}

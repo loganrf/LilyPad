@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block title %}Report {{ start.isoformat() }} – {{ end.isoformat() }} · LilyPad{% endblock %}
+{% block body_class %}page-report{% endblock %}
+{% block content %}
+{% include "admin/_nav.html" %}
+{% set t = r.totals %}
+<header class="report-head">
+  <h1>{{ baby_name }} — care report</h1>
+  <p class="sub">{{ start.strftime("%b") }} {{ start.day }}, {{ start.year }} – {{ end.strftime("%b") }} {{ end.day }}, {{ end.year }} ({{ r.n_days }} day{{ "s" if r.n_days != 1 }}){% if baby_age %} · age {{ baby_age }}{% endif %} · generated {{ r.generated }} · times in {{ settings.timezone_name }}</p>
+</header>
+
+<form method="get" action="/admin/report" class="filter-form no-print">
+  <div class="chips">
+    {% for days in (1, 3, 7, 14, 30) %}
+    {% set s = (now.astimezone(tz).date() - timedelta(days=days - 1)).isoformat() %}
+    <a class="chip {% if start.isoformat() == s and end == now.astimezone(tz).date() %}selected{% endif %}" href="/admin/report?start={{ s }}">{{ "Today" if days == 1 else "Last " ~ days ~ " days" }}</a>
+    {% endfor %}
+  </div>
+  <label><span class="label">From</span><input type="date" name="start" value="{{ start.isoformat() }}"></label>
+  <label><span class="label">To</span><input type="date" name="end" value="{{ end.isoformat() }}"></label>
+  <button type="submit" class="btn">Update</button>
+  <button type="button" class="btn ghost" data-print>Print / save PDF</button>
+</form>
+
+<section class="card">
+  <h2>Summary</h2>
+  <div class="tiles-stats">
+    <div class="stat"><span class="v">{{ "%.1f"|format(t.feeds_per_day) }}</span><span class="l">feeds / day</span></div>
+    <div class="stat"><span class="v">{{ t.avg_interval|duration if t.avg_interval else "—" }}</span><span class="l">avg start-to-start</span></div>
+    <div class="stat"><span class="v">{{ t.longest.minutes|duration if t.longest else "—" }}</span><span class="l">longest gap</span></div>
+    <div class="stat"><span class="v">{{ t.avg_feed_minutes|duration if t.avg_feed_minutes else "—" }}</span><span class="l">avg feed length</span></div>
+    {% if t.bottle_ml_per_day %}<div class="stat"><span class="v">{{ t.bottle_ml_per_day|volume(volume_unit) }}</span><span class="l">bottle / day</span></div>{% endif %}
+    <div class="stat"><span class="v">{{ "%.1f"|format(t.wet_per_day) }}</span><span class="l">wet / day</span></div>
+    <div class="stat"><span class="v">{{ "%.1f"|format(t.dirty_per_day) }}</span><span class="l">dirty / day</span></div>
+  </div>
+  {% if r.tracked_days < r.n_days %}<p class="sub">Daily averages cover the {{ r.tracked_days }} day{{ "s" if r.tracked_days != 1 }} since records begin ({{ r.tracked_start.strftime("%b") }} {{ r.tracked_start.day }}).</p>{% endif %}
+  {% if t.longest %}<p class="sub">Longest gap between feed starts: {{ t.longest.minutes|duration }}, from {{ t.longest.from|dt(tz, now) }} to {{ t.longest.to|dt(tz, now) }}.</p>{% endif %}
+</section>
+
+<section class="card">
+  <h2>Day by day</h2>
+  <div class="legend" aria-hidden="true">
+    <span class="key key-feed"></span> Feed <span class="key key-wet"></span> Wet diaper <span class="key key-dirty"></span> Dirty diaper <span class="key key-dry"></span> Dry check
+  </div>
+  <div class="chart-wrap">{{ r.strip_chart }}</div>
+  <div class="table-wrap">
+  <table class="table numeric">
+    <thead><tr><th>Day</th><th>Feeds</th><th>Feeding time</th><th>Bottle</th><th>Avg quality</th><th>Wet</th><th>Dirty</th><th>Notes</th><th>Vital alerts</th></tr></thead>
+    <tbody>
+    {% for d in r.days %}
+    <tr>
+      <th scope="row">{{ d.day.strftime("%a %b") }} {{ d.day.day }}</th>
+      <td>{{ d.feeds }}</td>
+      <td>{{ d.feed_minutes|duration if d.feed_minutes else "—" }}</td>
+      <td>{{ d.bottle_ml|volume(volume_unit) if d.bottle_ml else "—" }}</td>
+      <td>{{ C.FEED_QUALITY.get((d.quality_avg|round)|int, "—") if d.quality_avg else "—" }}</td>
+      <td>{{ d.wet }}</td>
+      <td>{{ d.dirty }}</td>
+      <td>{{ d.notes or "—" }}</td>
+      <td>{% if d.vital_alerts %}<span class="pill status-alert">&#9888; {{ d.vital_alerts }}</span>{% else %}—{% endif %}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<div class="grid">
+<section class="card">
+  <h2>Feeding details</h2>
+  {% if r.methods %}
+  <ul class="plain">{% for k, n in r.methods.most_common() %}<li>{{ C.FEED_METHODS.get(k, k) }}: {{ n }}</li>{% endfor %}</ul>
+  {% endif %}
+  {% if r.issues %}
+  <h3>Noted during feeds</h3>
+  <ul class="plain">{% for k, n in r.issues.most_common() %}<li>{{ C.FEED_ISSUES.get(k, k) }}: {{ n }}×</li>{% endfor %}</ul>
+  {% else %}<p class="muted">No feeding issues noted.</p>{% endif %}
+</section>
+
+<section class="card">
+  <h2>Stool</h2>
+  {% if r.colors %}
+  <h3>Colors</h3>
+  <ul class="plain">{% for k, n in r.colors.most_common() %}<li>{% if k in C.STOOL_COLOR_FLAGS %}<span class="pill status-alert">&#9888;</span> {% endif %}{{ C.STOOL_COLORS.get(k, k) }}: {{ n }}</li>{% endfor %}</ul>
+  {% endif %}
+  {% if r.consistencies %}
+  <h3>Consistency</h3>
+  <ul class="plain">{% for k, n in r.consistencies.most_common() %}<li>{{ C.STOOL_CONSISTENCY.get(k, k) }}: {{ n }}</li>{% endfor %}</ul>
+  {% endif %}
+  {% if r.flagged_diapers %}
+  <h3>Worth mentioning</h3>
+  <ul class="plain">{% for dp in r.flagged_diapers %}<li>{{ dp.occurred_at|dt(tz, now) }} — {{ C.STOOL_COLORS.get(dp.color) }}{% if dp.notes %} — “{{ dp.notes }}”{% endif %}</li>{% endfor %}</ul>
+  {% endif %}
+  {% if not r.colors and not r.consistencies %}<p class="muted">No stool details recorded.</p>{% endif %}
+</section>
+
+{% if r.tasks %}
+<section class="card">
+  <h2>Routines</h2>
+  <ul class="plain">{% for k, n in r.tasks.most_common() %}<li>{{ k }}: {{ n }}×</li>{% endfor %}</ul>
+</section>
+{% endif %}
+</div>
+
+<section class="card">
+  <h2>Vitals</h2>
+  {% for v in r.vitals %}
+  {% set p = v.param %}
+  <article class="vital-report">
+    <h3>{{ p.name }}{% if p.unit %} <span class="muted">({{ p.unit }})</span>{% endif %}</h3>
+    <p class="sub">{{ v.readings|length }} reading{{ "s" if v.readings|length != 1 }} · min {{ v.min|vital(p) }} · max {{ v.max|vital(p) }} · avg {{ v.avg|vital(p) }}
+      {% if v.counts.alert %} · <span class="pill status-alert">&#9888; {{ v.counts.alert }} alert</span>{% endif %}
+      {% if v.counts.watch %} · <span class="pill status-watch">{{ v.counts.watch }} outside expected</span>{% endif %}</p>
+    <div class="chart-wrap">{{ v.chart }}</div>
+    <details>
+      <summary>All readings</summary>
+      <div class="table-wrap">
+      <table class="table numeric">
+        <thead><tr><th>When</th><th>Value</th><th>Status</th><th>Notes</th></tr></thead>
+        <tbody>
+        {% for rd in v.readings|reverse %}
+        <tr><td>{{ rd.measured_at|dt(tz, now) }}</td><td>{{ rd.value|vital(p) }}</td>
+          <td>{% if rd.status == "alert" %}<span class="pill status-alert">&#9888; alert</span>{% elif rd.status == "watch" %}<span class="pill status-watch">watch</span>{% elif rd.status == "ok" %}<span class="pill status-ok">&#10003; ok</span>{% else %}—{% endif %}</td>
+          <td>{{ rd.check_notes or "" }}</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      </div>
+    </details>
+  </article>
+  {% else %}
+  <p class="muted">No vitals recorded in this period.</p>
+  {% endfor %}
+</section>
+
+<section class="card">
+  <h2>Questions &amp; notes for the pediatrician</h2>
+  {% set ped = r.ped_notes + r.open_ped_notes_outside %}
+  {% if ped %}
+  <ul class="ped-list">
+    {% for n in ped %}
+    <li class="{{ 'discussed' if n.discussed }}">
+      <div><span class="muted">{{ n.occurred_at|dt(tz, now) }}</span> {{ n.body }}{% if n.tags %} <span class="muted">#{{ n.tags.replace(", ", " #") }}</span>{% endif %}</div>
+      <form method="post" action="/admin/notes/{{ n.id }}/discussed" class="inline no-print">
+        {{ m.csrf_field(csrf) }}
+        <input type="hidden" name="next" value="{{ request.url.path }}?{{ request.url.query }}">
+        <input type="hidden" name="discussed" value="{{ '0' if n.discussed else '1' }}">
+        <button type="submit" class="btn small ghost">{{ "Mark not discussed" if n.discussed else "Mark discussed" }}</button>
+      </form>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}<p class="muted">No pediatrician questions.</p>{% endif %}
+</section>
+
+<section class="card">
+  <h2>All notes in this period</h2>
+  {% if r.notes %}
+  <ul class="plain notes-list">{% for n in r.notes %}<li><span class="muted">{{ n.occurred_at|dt(tz, now) }}{% if n.logged_by %} · {{ n.logged_by }}{% endif %}</span><br>{{ n.body }}</li>{% endfor %}</ul>
+  {% else %}<p class="muted">No notes.</p>{% endif %}
+</section>
+<p class="fineprint">Generated by LilyPad from parent-entered logs. Not a medical record or device.</p>
+{% endblock %}

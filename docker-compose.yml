@@ -1,0 +1,72 @@
+# LilyPad — self-hosted infant care tracker.
+#
+#   cp .env.example .env      # set TZ (and optionally a password)
+#   docker compose up -d --build
+#   docker compose logs lilypad | grep -i password   # first-run admin password
+#
+# Then open http://<this-machine>:8080 on your phones. Keep it on your home
+# network or a VPN: logging is intentionally password-free. Read
+# docs/PRIVACY_AND_SECURITY.md before exposing it anywhere else.
+
+services:
+  lilypad:
+    build: .
+    image: lilypad:local
+    container_name: lilypad
+    restart: unless-stopped
+    ports:
+      - "${LILYPAD_PORT:-8080}:8080"
+    environment:
+      # Household time zone (IANA name, e.g. America/Chicago, Europe/London).
+      TZ: ${TZ:-UTC}
+      # Optional. When set, this always unlocks the admin area and the
+      # in-app "change password" form is disabled. When empty, a password is
+      # generated on first start and printed to the log.
+      LILYPAD_ADMIN_PASSWORD: ${LILYPAD_ADMIN_PASSWORD:-}
+      # Comma-separated host names LilyPad answers to ("*" = any).
+      # Setting this blocks DNS-rebinding attacks; recommended.
+      LILYPAD_ALLOWED_HOSTS: ${LILYPAD_ALLOWED_HOSTS:-*}
+      # Only needed behind a reverse proxy that rewrites the Host header,
+      # e.g. https://lilypad.example.com
+      LILYPAD_ALLOWED_ORIGINS: ${LILYPAD_ALLOWED_ORIGINS:-}
+      # Trust X-Forwarded-* from these proxy IPs (comma separated) so login
+      # throttling sees real client IPs and cookies are marked Secure on HTTPS.
+      FORWARDED_ALLOW_IPS: ${FORWARDED_ALLOW_IPS:-127.0.0.1}
+      LILYPAD_ADMIN_SESSION_MINUTES: ${LILYPAD_ADMIN_SESSION_MINUTES:-30}
+    volumes:
+      - lilypad-data:/data
+    # Hardening: nothing in the container needs to write outside /data and /tmp.
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+  # Optional: a private ntfy server so notifications never touch ntfy.sh.
+  # Start with:  docker compose --profile ntfy up -d
+  # Then set the ntfy server in LilyPad's settings to http://<this-machine>:8081
+  ntfy:
+    image: binwiederhier/ntfy:v2.11.0
+    profiles: ["ntfy"]
+    container_name: lilypad-ntfy
+    restart: unless-stopped
+    command: serve
+    environment:
+      TZ: ${TZ:-UTC}
+      NTFY_BASE_URL: ${NTFY_BASE_URL:-http://localhost:8081}
+      NTFY_CACHE_FILE: /var/cache/ntfy/cache.db
+      NTFY_AUTH_FILE: /var/lib/ntfy/user.db
+      NTFY_AUTH_DEFAULT_ACCESS: deny-all
+      NTFY_BEHIND_PROXY: "false"
+    ports:
+      - "${NTFY_PORT:-8081}:80"
+    volumes:
+      - ntfy-cache:/var/cache/ntfy
+      - ntfy-auth:/var/lib/ntfy
+
+volumes:
+  lilypad-data:
+  ntfy-cache:
+  ntfy-auth:

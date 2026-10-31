@@ -1,0 +1,5 @@
+<nav class="subnav" aria-label="Admin">
+  {% for href, label in [("/admin", "Overview"), ("/admin/report", "Report"), ("/admin/history", "History"), ("/admin/export", "Export"), ("/admin/reminders", "Reminders"), ("/admin/vitals", "Vitals"), ("/admin/settings", "Settings"), ("/admin/alerts", "Notifications"), ("/admin/trash", "Trash")] %}
+  <a href="{{ href }}" {% if path == href %}aria-current="page"{% endif %}>{{ label }}</a>
+  {% endfor %}
+</nav>

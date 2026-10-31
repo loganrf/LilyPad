@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block body_class %}page-home{% endblock %}
+{% block content %}
+
+{% if snap.vital_alerts or attention %}
+<section class="alerts" aria-label="Needs attention">
+  {% for a in snap.vital_alerts %}
+  <div class="alert alert-critical" role="alert">
+    <div><strong>{{ a.title }}</strong><span>{{ a.message }}</span></div>
+    <form method="post" action="/api/alerts/{{ a.id }}/ack" class="inline">
+      <input type="hidden" name="next" value="/">
+      <button type="submit" class="btn small">Acknowledge</button>
+    </form>
+  </div>
+  {% endfor %}
+  {% for s in attention %}
+  <div class="alert alert-{{ s.stage }}">
+    <div>
+      <strong>{{ s.reminder.name }}: {{ C.REMINDER_STAGE_LABELS[s.stage]|lower }}</strong>
+      <span>Due {{ s.due_at|time(tz) }} (<span data-until="{{ s.due_at|iso }}">{{ s.due_at|until(now) }}</span>)</span>
+    </div>
+    <form method="post" action="/api/reminders/{{ s.reminder.id }}/snooze?minutes=15" class="inline">
+      <input type="hidden" name="next" value="/">
+      <button type="submit" class="btn small">Snooze 15m</button>
+    </form>
+  </div>
+  {% endfor %}
+</section>
+{% endif %}
+
+<div class="grid">
+
+<section class="card card-feed" aria-labelledby="feed-h">
+  <h2 id="feed-h">Feeding</h2>
+  {% if active_feed %}
+    <div class="active-feed">
+      <p class="eyebrow">Feeding now · {{ C.FEED_METHODS.get(active_feed.method) }}{% if active_feed.side %} · {{ C.FEED_SIDES.get(active_feed.side) }}{% endif %}</p>
+      <p class="timer" data-timer="{{ active_feed.started_at }}">{{ active_feed.started_at|ago(now) }}</p>
+      <p class="sub">Started {{ active_feed.started_at|time(tz) }}{% if active_feed.logged_by %} by {{ active_feed.logged_by }}{% endif %}</p>
+      {% if stale_active %}<p class="warn-text">This timer has been running a long time. Did you forget to stop it? Reminders treat it as finished.</p>{% endif %}
+      <form method="post" action="/feed/{{ active_feed.id }}/stop">
+        <button type="submit" class="btn huge primary">Stop feed</button>
+      </form>
+      {% if active_feed.method == "breast" %}
+      <form method="post" action="/feed/{{ active_feed.id }}/side" class="side-switch">
+        <span class="label">Side</span>
+        {% for key, label in C.FEED_SIDES.items() %}
+        <button type="submit" name="side" value="{{ key }}" class="btn small {% if active_feed.side == key %}selected{% endif %}" {% if active_feed.side == key %}aria-pressed="true"{% endif %}>{{ label }}</button>
+        {% endfor %}
+      </form>
+      {% endif %}
+      {{ m.delete_form("feedings", active_feed.id, "/", "Cancel this feed") }}
+    </div>
+  {% else %}
+    {% if last_feed %}
+    <p class="big-ago"><span data-ago="{{ last_feed.started_at }}">{{ last_feed.started_at|ago(now) }}</span></p>
+    <p class="sub">since the last feed started ({{ last_feed.started_at|time(tz) }}) ·
+      {{ C.FEED_METHODS.get(last_feed.method) }}{% if last_feed.side %} {{ C.FEED_SIDES.get(last_feed.side)|lower }}{% endif %}{% if last_feed|feed_minutes %} · {{ (last_feed|feed_minutes)|duration }}{% endif %}{% if last_feed.amount_ml %} · {{ last_feed.amount_ml|volume(volume_unit) }}{% endif %}{% if last_feed.quality %} · {{ C.FEED_QUALITY.get(last_feed.quality)|lower }}{% endif %}
+    </p>
+    {% else %}
+    <p class="big-ago">No feeds yet</p>
+    {% endif %}
+    {% if feed_status %}{{ m.reminder_line(feed_status, tz, now) }}{% endif %}
+    <div class="actions">
+      {% set sug = snap.feeding.suggested_side %}
+      <form method="post" action="/feed/start" class="inline">
+        <input type="hidden" name="method" value="breast"><input type="hidden" name="side" value="left">
+        <button type="submit" class="btn big {% if sug == 'left' %}primary{% endif %}">&#9654; Left{% if sug == 'left' %}<small>suggested</small>{% endif %}</button>
+      </form>
+      <form method="post" action="/feed/start" class="inline">
+        <input type="hidden" name="method" value="breast"><input type="hidden" name="side" value="right">
+        <button type="submit" class="btn big {% if sug == 'right' %}primary{% endif %}">&#9654; Right{% if sug == 'right' %}<small>suggested</small>{% endif %}</button>
+      </form>
+      <a class="btn big" href="/feed/new?method=bottle">Bottle</a>
+      <a class="btn" href="/feed/new">Log a past feed</a>
+    </div>
+  {% endif %}
+</section>
+
+<section class="card card-diaper" aria-labelledby="diaper-h">
+  <h2 id="diaper-h">Diapers</h2>
+  <dl class="mini-stats">
+    <div><dt>Last change</dt><dd>{% if last_diaper %}<span data-ago="{{ last_diaper.occurred_at }}">{{ last_diaper.occurred_at|ago(now) }}</span>{% else %}—{% endif %}</dd></div>
+    <div><dt>Last wet</dt><dd>{% if last_wet %}<span data-ago="{{ last_wet.occurred_at }}">{{ last_wet.occurred_at|ago(now) }}</span>{% else %}—{% endif %}</dd></div>
+    <div><dt>Last poop</dt><dd>{% if last_dirty %}<span data-ago="{{ last_dirty.occurred_at }}">{{ last_dirty.occurred_at|ago(now) }}</span>{% else %}—{% endif %}</dd></div>
+  </dl>
+  {% if last_dirty and last_dirty.color %}
+  <p class="sub">Last poop: {{ C.STOOL_COLORS.get(last_dirty.color, "")|lower }}{% if last_dirty.consistency %}, {{ C.STOOL_CONSISTENCY.get(last_dirty.consistency, "")|lower }}{% endif %}</p>
+  {% if last_dirty.color in C.STOOL_COLOR_FLAGS %}<p class="flag-text">{{ C.STOOL_COLOR_FLAGS[last_dirty.color] }}</p>{% endif %}
+  {% endif %}
+  {% for s in diaper_statuses %}{{ m.reminder_line(s, tz, now) }}{% endfor %}
+  <div class="actions">
+    <form method="post" action="/diaper/quick" class="inline">
+      <input type="hidden" name="kind" value="wet">
+      <button type="submit" class="btn big">Wet<small>one tap</small></button>
+    </form>
+    <a class="btn big" href="/diaper/new?kind=dirty">Dirty</a>
+    <a class="btn big" href="/diaper/new?kind=mixed">Both</a>
+    <form method="post" action="/diaper/quick" class="inline">
+      <input type="hidden" name="kind" value="dry">
+      <button type="submit" class="btn">Dry check</button>
+    </form>
+  </div>
+</section>
+
+<section class="card card-counts" aria-labelledby="counts-h">
+  <h2 id="counts-h">Last 24 hours</h2>
+  {% set c = snap.last_24h %}
+  <div class="tiles-stats">
+    <div class="stat"><span class="v">{{ c.feeds }}</span><span class="l">feeds</span></div>
+    <div class="stat"><span class="v">{{ c.feed_minutes|duration or "0m" }}</span><span class="l">feeding time</span></div>
+    {% if c.bottle_ml %}<div class="stat"><span class="v">{{ c.bottle_ml|volume(volume_unit) }}</span><span class="l">by bottle</span></div>{% endif %}
+    <div class="stat"><span class="v">{{ c.wet }}</span><span class="l">wet</span></div>
+    <div class="stat"><span class="v">{{ c.dirty }}</span><span class="l">dirty</span></div>
+  </div>
+</section>
+
+<section class="card card-vitals" aria-labelledby="vitals-h">
+  <h2 id="vitals-h">Vitals</h2>
+  {% if snap.vitals %}
+  <ul class="vital-list">
+    {% for v in snap.vitals %}
+    <li class="vital status-{{ v.status or 'none' }}">
+      <span class="vital-name">{{ v.name }}</span>
+      {% if v.value is not none %}
+        <span class="vital-value">{{ v.display }}</span>
+        {% if v.status == "alert" %}<span class="pill status-alert">&#9888; alert</span>{% elif v.status == "watch" %}<span class="pill status-watch">outside expected</span>{% elif v.status == "ok" %}<span class="pill status-ok">&#10003; ok</span>{% endif %}
+        <span class="vital-when" data-ago="{{ v.measured_at }}">{{ v.measured_at|ago(now) }}</span>
+      {% else %}
+        <span class="muted">not logged yet</span>
+      {% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="muted">No vital parameters are set up. Add some in <a href="/admin/vitals">Admin › Vitals</a>.</p>
+  {% endif %}
+  {% for s in vitals_statuses %}{{ m.reminder_line(s, tz, now) }}{% endfor %}
+  <div class="actions"><a class="btn big" href="/vitals/new">Log vitals</a></div>
+</section>
+
+{% if routine_statuses %}
+<section class="card card-routines" aria-labelledby="routines-h">
+  <h2 id="routines-h">Routines</h2>
+  {% for s in routine_statuses %}
+  <div class="routine">
+    {{ m.reminder_line(s, tz, now) }}
+    <form method="post" action="/task/{{ s.reminder.id }}/done" class="inline">
+      <button type="submit" class="btn">Done</button>
+    </form>
+  </div>
+  {% endfor %}
+</section>
+{% endif %}
+
+<section class="card card-notes" aria-labelledby="notes-h">
+  <h2 id="notes-h">Notes</h2>
+  <p class="sub">Jot down anything worth remembering or asking about.{% if open_ped_notes %} <strong>{{ open_ped_notes }}</strong> question{{ "s" if open_ped_notes != 1 }} waiting for the pediatrician (see the report in Admin).{% endif %}</p>
+  <div class="actions">
+    <a class="btn big" href="/note/new">Add note</a>
+    <a class="btn big" href="/note/new?ped=1">Ask the pediatrician</a>
+  </div>
+</section>
+
+</div>
+
+<section class="card card-recent" aria-labelledby="recent-h">
+  <h2 id="recent-h">Recent</h2>
+  {% if recent %}
+  <ul class="entries">{% for item in recent %}{{ m.entry_item(item, tz, now) }}{% endfor %}</ul>
+  <p><a href="/timeline">Full timeline &rsaquo;</a></p>
+  {% else %}
+  <p class="muted">Nothing logged yet. Tap a button above to start.</p>
+  {% endif %}
+</section>
+
+{% endblock %}

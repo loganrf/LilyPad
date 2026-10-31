@@ -1,0 +1,63 @@
+/* Dash: big type for a wall tablet or monitor across the room. */
+body.dash {
+  min-height: 100vh; display: flex; flex-direction: column; font-size: clamp(16px, 1.6vw, 26px);
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+.dash-head { display: flex; align-items: center; gap: 16px; padding: 12px 20px; }
+.dash-baby { font-weight: 700; font-size: 1.3em; }
+.dash-age { color: var(--muted); font-weight: 400; font-size: 0.75em; margin-left: 6px; }
+.dash-clock { margin-left: auto; font-size: 1.6em; font-weight: 700; font-variant-numeric: tabular-nums; }
+.dash-tools { display: flex; align-items: center; gap: 8px; }
+.dash-btn {
+  font: inherit; font-size: 0.75em; min-height: 44px; padding: 4px 14px; border-radius: 10px; cursor: pointer;
+  border: 1px solid var(--border); background: var(--surface-2); color: var(--text-2);
+}
+.dash-conn { color: var(--alert); font-size: 0.8em; }
+.dash-conn.ok { color: var(--ok); }
+.dash-alerts { display: flex; flex-direction: column; gap: 10px; padding: 0 20px 10px; }
+.dash-alert {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 14px 18px; border-radius: 16px; border: 2px solid var(--border); background: var(--surface);
+}
+.dash-alert-text { display: flex; flex-direction: column; }
+.dash-alert strong { font-size: 1.2em; }
+.dash-alert.window { border-color: var(--accent); background: var(--accent-2); }
+.dash-alert.due { border-color: var(--warn); background: var(--warn-bg); color: var(--warn); }
+.dash-alert.overdue, .dash-alert.critical { border-color: var(--alert); background: var(--alert-bg); color: var(--alert); }
+body.attention .dash-alert.overdue, body.attention .dash-alert.critical { animation: pulse 2s ease-in-out infinite; }
+@keyframes pulse { 50% { box-shadow: 0 0 0 6px var(--alert-bg); } }
+@media (prefers-reduced-motion: reduce) { body.attention .dash-alert { animation: none; } }
+
+main.dash-grid {
+  max-width: none; margin: 0; width: 100%;
+  flex: 1; display: grid; gap: 14px; padding: 0 20px 14px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); align-content: start;
+}
+.dash-tile { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 16px 20px; }
+.dash-tile h2 { font-size: 0.8em; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin: 0 0 8px; }
+.dash-feed { grid-column: 1 / -1; }
+.dash-feed.stage-due { border-color: var(--warn); }
+.dash-feed.stage-overdue { border-color: var(--alert); }
+.dash-feed.stage-in_progress { border-color: var(--accent); }
+.dash-big { font-size: 3.2em; font-weight: 800; line-height: 1.05; font-variant-numeric: tabular-nums; }
+.dash-sub { color: var(--text-2); margin-top: 4px; }
+.dash-next { margin-top: 10px; font-size: 1.05em; }
+.dash-hint { color: var(--muted); font-size: 0.9em; margin-top: 4px; }
+.dash-rows > div { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; border-bottom: 1px solid var(--border); }
+.dash-rows > div:last-child { border-bottom: 0; }
+.dash-label { color: var(--muted); }
+.dash-val { font-weight: 700; text-align: right; }
+.dash-flag { margin-top: 8px; color: var(--alert); background: var(--alert-bg); padding: 8px 10px; border-radius: 10px; font-size: 0.9em; }
+.dash-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); gap: 10px; }
+.dash-stat { background: var(--surface-2); border-radius: 12px; padding: 10px; display: flex; flex-direction: column; }
+.dash-stat .v { font-size: 1.7em; font-weight: 800; line-height: 1.1; }
+.dash-stat .l { color: var(--muted); font-size: 0.8em; }
+.dash-list { list-style: none; margin: 0; padding: 0; }
+.dash-list li { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.dash-list li:last-child { border-bottom: 0; }
+.dash-li-name { font-weight: 600; }
+.dash-li-val { text-align: right; color: var(--text-2); }
+.dash-li-val .pill { margin: 0 6px; }
+.dash-foot { padding: 8px 20px 16px; color: var(--muted); font-size: 0.75em; }
+.dash-foot a { color: var(--muted); }
+.dash-noscript { padding: 20px; }

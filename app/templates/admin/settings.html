@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block title %}Settings · LilyPad{% endblock %}
+{% block content %}
+{% include "admin/_nav.html" %}
+<h1>Settings</h1>
+{% if errors %}
+<div class="error" role="alert"><ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul></div>
+{% endif %}
+
+<form method="post" action="/admin/settings" class="stack settings-form">
+  {{ m.csrf_field(csrf) }}
+
+  <section class="card">
+    <h2>Baby &amp; household</h2>
+    <label class="field"><span class="label">Baby's name</span>
+      <input type="text" name="baby_name" value="{{ settings['baby_name'] }}" maxlength="60" required></label>
+    <label class="field"><span class="label">Birth date <span class="muted">(shows age; optional)</span></span>
+      <input type="date" name="birth_date" value="{{ settings['birth_date'] }}"></label>
+    <label class="field"><span class="label">Time zone</span>
+      <input type="text" name="timezone" value="{{ settings['timezone'] }}" list="tz-list" placeholder="{{ settings.default_timezone }} (from the TZ variable)" autocomplete="off">
+      <datalist id="tz-list">{% for t in timezones %}<option value="{{ t }}">{% endfor %}</datalist>
+      <span class="hint">All times are shown and entered in this zone. Currently: {{ settings.timezone_name }}.</span></label>
+    <fieldset class="field"><legend>Bottle volume unit</legend>
+      <label class="check-row"><input type="radio" name="volume_unit" value="ml" {% if settings.volume_unit == "ml" %}checked{% endif %}> <span>Millilitres (ml)</span></label>
+      <label class="check-row"><input type="radio" name="volume_unit" value="oz" {% if settings.volume_unit == "oz" %}checked{% endif %}> <span>Fluid ounces (oz)</span></label>
+    </fieldset>
+    <label class="field"><span class="label">Caregivers <span class="muted">(comma separated, optional)</span></span>
+      <input type="text" name="caregivers" value="{{ settings['caregivers'] }}" placeholder="e.g. Sam, Alex, Grandma">
+      <span class="hint">Lets each device pick “Logging as…” so entries show who logged them. It is a label, not a login.</span></label>
+  </section>
+
+  <section class="card">
+    <h2>Open access</h2>
+    <label class="field"><span class="label">Open window (hours)</span>
+      <input type="number" name="open_window_hours" min="24" max="720" value="{{ settings.open_window_hours }}">
+      <span class="hint">How far back the password-free timeline reaches, and how old an entry can be and still be edited without the admin password. Longer is more convenient and exposes more history to anyone on your network. Default 48.</span></label>
+    <label class="field"><span class="label">Base URL <span class="muted">(optional)</span></span>
+      <input type="url" name="base_url" value="{{ settings['base_url'] }}" placeholder="http://lilypad.home.arpa:8080">
+      <span class="hint">How your phones reach LilyPad. Used for tap-to-open links and the Snooze button in ntfy notifications.</span></label>
+  </section>
+
+  <section class="card" id="ntfy">
+    <h2>ntfy notifications</h2>
+    <label class="check-row"><input type="checkbox" name="ntfy_enabled" value="1" {% if settings.flag("ntfy_enabled") %}checked{% endif %}> <span>Send reminders and alerts to ntfy</span></label>
+    <label class="field"><span class="label">Server</span>
+      <input type="url" name="ntfy_server" value="{{ settings['ntfy_server'] }}" placeholder="https://ntfy.sh"></label>
+    <label class="field"><span class="label">Topic</span>
+      <input type="text" name="ntfy_topic" value="{{ settings['ntfy_topic'] }}" pattern="[-_A-Za-z0-9]{1,64}" id="ntfy-topic" autocomplete="off">
+      <span class="hint">On the public ntfy.sh server <strong>anyone who knows the topic can read your notifications</strong>. Use a long random topic: <button type="button" class="btn small ghost" data-random-topic="#ntfy-topic">Generate one</button></span></label>
+    <label class="field"><span class="label">Access token <span class="muted">(optional)</span></span>
+      <input type="password" name="ntfy_token" value="" autocomplete="new-password" placeholder="{{ 'Saved — leave blank to keep' if secrets_set.ntfy_token else 'tk_...' }}">
+      {% if secrets_set.ntfy_token %}<label class="check-row small"><input type="checkbox" name="clear_ntfy_token" value="1"> <span>Remove saved token</span></label>{% endif %}</label>
+    <div class="two-col">
+      <label class="field"><span class="label">Username <span class="muted">(optional)</span></span>
+        <input type="text" name="ntfy_username" value="{{ settings['ntfy_username'] }}" autocomplete="off"></label>
+      <label class="field"><span class="label">Password</span>
+        <input type="password" name="ntfy_password" value="" autocomplete="new-password" placeholder="{{ 'Saved — leave blank to keep' if secrets_set.ntfy_password else '' }}">
+        {% if secrets_set.ntfy_password %}<label class="check-row small"><input type="checkbox" name="clear_ntfy_password" value="1"> <span>Remove saved password</span></label>{% endif %}</label>
+    </div>
+    <fieldset class="field"><legend>How much detail to put in notifications</legend>
+      {% for key, label, hint in [("minimal", "Minimal", "“A routine is due. Open LilyPad.” No names, times or health values leave your network."), ("standard", "Standard", "Routine name, due time and last-logged time; vital sign values. No baby name."), ("detailed", "Detailed", "Everything above plus the baby's name, feed side/duration/quality and vitals notes.")] %}
+      <label class="check-row"><input type="radio" name="notify_detail" value="{{ key }}" {% if settings.notify_detail == key %}checked{% endif %}> <span><strong>{{ label }}</strong> — {{ hint }}</span></label>
+      {% endfor %}
+      <span class="hint">Applies to ntfy and the dash webhook. The built-in /dash page always shows full detail (it reads LilyPad directly).</span>
+    </fieldset>
+    <label class="check-row"><input type="checkbox" name="ntfy_actions" value="1" {% if settings.flag("ntfy_actions") %}checked{% endif %}> <span>Add “Open” and “Snooze 15 min” buttons to notifications (needs a Base URL your phone can reach)</span></label>
+  </section>
+
+  <section class="card" id="dash">
+    <h2>Dash display</h2>
+    <p class="sub">Any screen can show the live dash at <a href="/dash">/dash</a> (no password, like the home screen). To also push reminders to an external dashboard (Home Assistant, Node-RED, TRMNL...), configure a webhook. See <code>docs/DASH.md</code>.</p>
+    <label class="check-row"><input type="checkbox" name="dash_sound" value="1" {% if settings.flag("dash_sound") %}checked{% endif %}> <span>Allow the built-in dash to chime on new alerts</span></label>
+    <label class="check-row"><input type="checkbox" name="dash_webhook_enabled" value="1" {% if settings.flag("dash_webhook_enabled") %}checked{% endif %}> <span>POST every reminder/alert to a webhook</span></label>
+    <label class="field"><span class="label">Webhook URL</span>
+      <input type="url" name="dash_webhook_url" value="{{ settings['dash_webhook_url'] }}" placeholder="http://homeassistant.local:8123/api/webhook/lilypad-xyz"></label>
+    <label class="field"><span class="label">Extra headers <span class="muted">(one per line, optional)</span></span>
+      <textarea name="dash_webhook_headers" rows="2" placeholder="{{ 'Saved — leave blank to keep' if secrets_set.dash_webhook_headers else 'Authorization: Bearer ...' }}"></textarea>
+      {% if secrets_set.dash_webhook_headers %}<label class="check-row small"><input type="checkbox" name="clear_dash_webhook_headers" value="1"> <span>Remove saved headers</span></label>{% endif %}</label>
+  </section>
+
+  <div class="form-actions sticky-actions">
+    <button type="submit" class="btn huge primary">Save settings</button>
+  </div>
+</form>
+
+<form method="post" action="/admin/test-notification" class="card">
+  {{ m.csrf_field(csrf) }}
+  <h2>Test delivery</h2>
+  <p class="sub">Save first, then send a test to every configured channel (ntfy, dash webhook and open /dash screens).</p>
+  <button type="submit" class="btn">Send test notification</button>
+</form>
+
+<section class="card" id="password">
+  <h2>Admin password</h2>
+  {% if env_password %}
+  <p>The admin password is set by the <code>LILYPAD_ADMIN_PASSWORD</code> environment variable. Change it there and restart the container.</p>
+  {% else %}
+  <form method="post" action="/admin/password" class="stack">
+    {{ m.csrf_field(csrf) }}
+    <label class="field"><span class="label">Current password</span><input type="password" name="current" autocomplete="current-password" required></label>
+    <label class="field"><span class="label">New password <span class="muted">(at least 8 characters)</span></span><input type="password" name="new" autocomplete="new-password" minlength="8" required></label>
+    <label class="field"><span class="label">Confirm new password</span><input type="password" name="confirm" autocomplete="new-password" minlength="8" required></label>
+    <button type="submit" class="btn">Change password</button>
+    <p class="hint">Changing it signs out every other device that has the admin area unlocked.</p>
+  </form>
+  {% endif %}
+</section>
+
+<p class="fineprint">Database: <code>{{ db_path }}</code></p>
+{% endblock %}
