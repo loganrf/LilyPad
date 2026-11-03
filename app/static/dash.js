@@ -5,13 +5,17 @@
   var body = document.body;
   var tz = body.getAttribute("data-tz") || undefined;
   var serverSound = body.getAttribute("data-sound") === "1";
-  var timeFmt, clockFmt;
+  var timeFmt, clockFmt, dayFmt, partsFmt;
   try {
     timeFmt = new Intl.DateTimeFormat([], { hour: "numeric", minute: "2-digit", timeZone: tz });
     clockFmt = new Intl.DateTimeFormat([], { hour: "numeric", minute: "2-digit", weekday: "short", timeZone: tz });
+    dayFmt = new Intl.DateTimeFormat([], { weekday: "short", month: "short", day: "numeric", timeZone: tz });
+    partsFmt = new Intl.DateTimeFormat("en-US", { year: "numeric", month: "numeric", day: "numeric", timeZone: tz });
   } catch (e) {
     timeFmt = new Intl.DateTimeFormat([], { hour: "numeric", minute: "2-digit" });
     clockFmt = timeFmt;
+    dayFmt = new Intl.DateTimeFormat([], { weekday: "short", month: "short", day: "numeric" });
+    partsFmt = new Intl.DateTimeFormat("en-US", { year: "numeric", month: "numeric", day: "numeric" });
   }
   var data = null, offset = 0, lastLoad = 0;
   var soundOn = false, audio = null, seenAlerts = {};
@@ -65,6 +69,19 @@
     return duration(-mins) + " overdue";
   }
   function at(ts) { return ts ? timeFmt.format(new Date(Date.parse(ts))) : ""; }
+  // Calendar day (as a day count) in the household time zone.
+  function dayNumber(ms) {
+    var p = {};
+    partsFmt.formatToParts(new Date(ms)).forEach(function (x) { p[x.type] = +x.value; });
+    return Math.round(Date.UTC(p.year, p.month - 1, p.day) / 864e5);
+  }
+  // "Today 9:15 AM", "Yesterday 11:40 PM", "Mon, Nov 2, 8:05 AM".
+  function when(ts) {
+    if (!ts) return "";
+    var t = Date.parse(ts), days = dayNumber(now()) - dayNumber(t);
+    var day = days === 0 ? "Today" : days === 1 ? "Yesterday" : dayFmt.format(new Date(t)) + ",";
+    return day + " " + at(ts);
+  }
   function timer(ts) {
     var secs = Math.max(0, Math.floor((now() - Date.parse(ts)) / 1000));
     var h = Math.floor(secs / 3600), m = Math.floor((secs % 3600) / 60), s = secs % 60;
@@ -169,6 +186,7 @@
     var flag = $("[data-diaper-flag]");
     flag.hidden = !(d.last_dirty && d.last_dirty.flag);
     flag.textContent = d.last_dirty && d.last_dirty.flag ? "⚠ " + d.last_dirty.flag : "";
+    $("[data-diaper-log]").hidden = !data.dash_diaper_buttons;
   }
 
   function renderCounts() {
@@ -221,8 +239,11 @@
       if (v.value === null) {
         sub.appendChild(node("span", "muted", "Not logged yet"));
       } else {
-        var reading = node("b", "nowrap dash-reading", v.display);
-        joined(sub, [reading, ago(v.measured_at)]);
+        // Admin → Settings → Display: time since, date and time, or both.
+        var mode = data.vitals_time_display, parts = [node("b", "nowrap dash-reading", v.display)];
+        if (mode === "date" || mode === "both") parts.push(when(v.measured_at));
+        if (mode !== "date") parts.push(ago(v.measured_at));
+        joined(sub, parts);
       }
       li.appendChild(sub);
       list.appendChild(li);
@@ -272,6 +293,62 @@
     if (!ok) $("[data-updated]").textContent = "Can't reach LilyPad — retrying…";
   }
 
+  // --- logging a diaper (Admin → Settings → Dash display) ----------------------
+
+  var UNDO_MS = 60000, logBusy = false, logTimer = null;
+
+  function logMessage(parts, isError, ms) {
+    var msg = $("[data-diaper-msg]");
+    clear(msg);
+    msg.classList.toggle("error", !!isError);
+    parts.forEach(function (p) { msg.appendChild(typeof p === "string" ? node("span", null, p) : p); });
+    clearTimeout(logTimer);
+    logTimer = setTimeout(function () { clear(msg); }, ms);
+  }
+
+  function setLogBusy(busy) {
+    logBusy = busy;
+    document.querySelectorAll(".dash-log-btn").forEach(function (b) { b.disabled = busy; });
+  }
+
+  function undoDiaper(id, btn) {
+    btn.disabled = true;
+    fetch("/entry/diapers/" + id + "/delete", {
+      method: "POST", credentials: "same-origin", body: new URLSearchParams({ undo: "1", next: "/dash" })
+    })
+      .then(function (r) {
+        if (!r.ok) throw new Error(r.status);
+        logMessage(["Undone."], false, 5000);
+        load();
+      })
+      .catch(function () { logMessage(["Couldn't undo. Delete it from the timeline."], true, 15000); });
+  }
+
+  function logDiaper(kind) {
+    if (logBusy) return;
+    setLogBusy(true);
+    fetch("/api/diapers?kind=" + encodeURIComponent(kind), { method: "POST", credentials: "same-origin" })
+      .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(function (entry) {
+        var undo = node("button", "dash-btn", "Undo");
+        undo.type = "button";
+        undo.addEventListener("click", function () { undoDiaper(entry.id, undo); });
+        var parts = [keep(entry.kind_label + " logged at " + at(entry.occurred_at)), undo];
+        if (entry.kind === "dirty" || entry.kind === "mixed") {
+          // Colour and consistency: the edit form returns to the dash. Only
+          // /dash may be framed, so inside another dashboard it opens a tab.
+          var details = node("a", "dash-btn", "Add details");
+          details.href = "/diaper/" + entry.id + "/edit?next=%2Fdash";
+          if (window.top !== window.self) { details.target = "_blank"; details.rel = "noopener"; }
+          parts.push(details);
+        }
+        logMessage(parts, false, UNDO_MS);
+        load();
+      })
+      .catch(function () { logMessage(["Couldn't log it. Try again."], true, 10000); })
+      .then(function () { setLogBusy(false); });
+  }
+
   // --- sound -----------------------------------------------------------------
 
   function chime(urgent) {
@@ -317,6 +394,12 @@
       try { localStorage.setItem(SOUND_KEY, soundOn ? "1" : "0"); } catch (e) {}
       updateSoundButton();
       if (soundOn) chime(false); // also unlocks audio after a user gesture
+    });
+
+    // The buttons post a plain form without this script; with it, a tap
+    // logs in the background and the dash stays on screen.
+    document.querySelectorAll(".dash-log-btn").forEach(function (btn) {
+      btn.addEventListener("click", function (e) { e.preventDefault(); logDiaper(btn.value); });
     });
 
     var clock = $("[data-clock]");

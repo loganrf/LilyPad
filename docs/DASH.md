@@ -27,9 +27,12 @@ Open `http://<lilypad>:8080/dash` on the display. It shows:
   overdue, vital-sign alerts), with **Snooze 15m** / **Acknowledge** buttons;
 - time since the last feed (or a running timer during a feed), the next due
   time, and the suggested breast side;
-- last diaper / wet / dirty, with a warning for concerning stool colours;
+- last diaper / wet / dirty, with a warning for concerning stool colours,
+  and optional **Wet**, **Dirty** and **Both** buttons to log a change
+  (see [Logging diapers from the dash](#logging-diapers-from-the-dash));
 - last-24-hour totals, an "up next" list of every reminder, and the latest
-  vitals with their status.
+  vitals with their status. Each vital shows the time since the check, the
+  date and time of the check, or both (Admin → Settings → Display).
 
 It updates instantly when anyone logs something or an alert fires, and
 re-checks every minute in case the connection drops (the dot in the corner
@@ -51,6 +54,19 @@ is green while connected).
   The choice is saved on that device only.
 - `/dash` is open (no password), like the home screen. See
   [PRIVACY_AND_SECURITY.md](PRIVACY_AND_SECURITY.md).
+
+**Logging diapers from the dash**
+
+Turn on Admin → Settings → Dash display → *Show Wet, Dirty and Both
+buttons on the dash*. Each tap logs the change at that moment, and the dash
+stays on screen:
+
+- For one minute, the dash shows **Undo**, which deletes the entry again.
+- After **Dirty** or **Both**, it also shows **Add details**. This opens the
+  diaper form for colour and consistency and then goes back to the dash.
+  The stool-colour warning needs the colour.
+- The buttons are off by default. They do not change who can log: anyone
+  who can reach LilyPad can already log a diaper from the home screen.
 
 **Embedding in another dashboard (iframe)**
 
@@ -160,11 +176,17 @@ password). Abbreviated:
   "vitals": [{"name": "Temperature", "display": "99.1 °F", "status": "ok", "measured_at": "…"}],
   "vital_alerts": [],
   "alerts": [ /* notifications from the last 12 hours */ ],
-  "dash_sound": true
+  "dash_sound": true,
+  "dash_diaper_buttons": false,
+  "vitals_time_display": "ago"
 }
 ```
 
 All timestamps are UTC (ISO 8601 with `Z`).
+
+`dash_diaper_buttons` tells if the built-in page shows its diaper buttons.
+`vitals_time_display` is `ago` (time since the check), `date` (date and
+time of the check) or `both`.
 
 A feed's `side` summarises it (`left`, `right` or `both` if the breast was
 switched mid-feed); `last_side` is the breast in use last (`left`/`right`,
@@ -200,12 +222,19 @@ before exposing anything.
 emits `alert` (with the alert JSON) and `changed` (someone logged or edited
 something) events, plus a keep-alive comment every 20 seconds.
 
-**Snooze / acknowledge from a script:**
+**Snooze, acknowledge or log a diaper from a script:**
 
 ```sh
 curl -X POST "http://192.168.1.20:8080/api/reminders/1/snooze?minutes=15"
 curl -X POST "http://192.168.1.20:8080/api/alerts/42/ack"
+curl -X POST "http://192.168.1.20:8080/api/diapers?kind=wet"
 ```
+
+For `/api/diapers`, `kind` is `wet`, `dirty`, `mixed` (wet + dirty) or
+`dry`. The reply is the new entry, e.g. `{"ok": true, "id": 57, "kind":
+"wet", "kind_label": "Wet", "occurred_at": "2026-10-28T20:51:00Z"}`. It
+works if the dash shows its buttons or not. For example, a Home Assistant
+automation can call it from a button next to the changing table.
 
 ---
 

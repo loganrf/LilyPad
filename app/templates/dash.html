@@ -52,6 +52,14 @@
         <div class="dash-row"><span class="dash-label">Last poop</span><span class="dash-val" data-diaper-dirty>—</span><span class="dash-detail" data-diaper-dirty-detail></span></div>
       </div>
       <div class="dash-flag" data-diaper-flag hidden></div>
+      <div class="dash-log" data-diaper-log {% if not dash_diaper_buttons %}hidden{% endif %}>
+        <form method="post" action="/diaper/quick" class="dash-log-btns" aria-label="Log a diaper change">
+          <button type="submit" class="dash-btn dash-log-btn" name="kind" value="wet">Wet</button>
+          <button type="submit" class="dash-btn dash-log-btn" name="kind" value="dirty">Dirty</button>
+          <button type="submit" class="dash-btn dash-log-btn" name="kind" value="mixed">Both</button>
+        </form>
+        <div class="dash-log-msg" data-diaper-msg role="status"></div>
+      </div>
     </section>
     <section class="dash-tile dash-counts">
       <h2>Last 24 hours</h2>

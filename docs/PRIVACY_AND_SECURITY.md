@@ -21,7 +21,7 @@ situation differs from the default assumptions.
 
 | Area | Password? | Who can use it |
 |---|---|---|
-| Home screen, logging forms (feeds, diapers, vitals, notes, routines) | No | Anyone who can reach LilyPad |
+| Home screen, logging forms (feeds, diapers, vitals, notes, routines), one-tap diaper logging (home screen, dash buttons, `/api/diapers`) | No | Anyone who can reach LilyPad |
 | Timeline of the **open window** (last 48 hours by default) | No | Anyone who can reach LilyPad |
 | Editing or deleting entries **inside** the open window | No | Anyone who can reach LilyPad |
 | Undoing a delete within 30 minutes | No | Anyone who can reach LilyPad |
@@ -35,7 +35,7 @@ situation differs from the default assumptions.
 | **History search** across all time | **Yes** | Admin |
 | **Reports**, including the pediatrician summary and charts | **Yes** | Admin |
 | **Exports**: CSV, JSON backup, raw database download | **Yes** | Admin |
-| **Settings**: baby details, time zone, units, caregivers, open-window length, base URL | **Yes** | Admin |
+| **Settings**: baby details, time zone, units, caregivers, open-window length, base URL, display and dash options | **Yes** | Admin |
 | **Notification settings**: ntfy server/topic/credentials, detail level, dash webhook | **Yes** | Admin |
 | **Reminder schedules** (intervals, windows, repeats, active hours, channels) | **Yes** | Admin |
 | **Vital parameters** and their expected/alert limits | **Yes** | Admin |

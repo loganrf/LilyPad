@@ -9,10 +9,12 @@ last eat?"** Runs as a single Docker container on your home network.
   (poor → great) and notable issues (spit-up, poor latch, fussy…). Suggests
   the next breast side from the one you finished on.
 - **Diapers**: one-tap wet; dirty with colour, consistency and amount.
-  Gently flags stool colours worth a call to the pediatrician.
+  Gently flags stool colours worth a call to the pediatrician. Optional
+  one-tap buttons on the dash, too.
 - **Vitals you define**: temperature, weight, heart rate, SpO₂, anything.
   Each parameter has a unit, an expected range and alert limits; alert
-  readings notify immediately.
+  readings notify immediately. Show the time since each check, its date
+  and time, or both.
 - **Notes**: jot observations, tag them, and mark questions for the
   pediatrician. They collect in the report for your next visit.
 - **Reminders on your schedule**: custom intervals for feeds, diapers,
@@ -82,7 +84,7 @@ then in **Settings**:
 | Finish it | **Stop feed** (it's saved). Optionally rate it, add notes, then **Save feed** |
 | Log a bottle | **Bottle** → **Save** at the top, after tapping an amount chip below it |
 | Log a feed after the fact | **Log a past feed** → "30m ago" chip → duration chip |
-| Log a wet diaper | **Wet** (one tap, done) |
+| Log a wet diaper | **Wet** (one tap, done), on the home screen or the dash (if its diaper buttons are on) |
 | Log a dirty diaper | **Dirty** → colour, consistency → **Save** |
 | Fix a mistake | **Undo** in the green bar, or **Edit** on any recent entry |
 | Take a temperature | **Log vitals** (the form warns live if it's out of range) |
@@ -121,6 +123,10 @@ Notable in-app settings:
 - **Base URL**: how phones reach LilyPad; enables tap-to-open and Snooze
   buttons in notifications.
 - **Notification detail**: Minimal / Standard / Detailed.
+- **Display → Vitals**: show the time since each check ("2h 15m ago"),
+  the date and time of the check ("Today 9:15 AM"), or both.
+- **Dash display → diaper buttons**: **Wet**, **Dirty** and **Both**
+  buttons on `/dash` (off by default).
 
 ## Installing as an app
 

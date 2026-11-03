@@ -31,6 +31,16 @@
       <span class="hint">Lets each device pick “Logging as…” so entries show who logged them. It is a label, not a login.</span></label>
   </section>
 
+  <section class="card" id="display">
+    <h2>Display</h2>
+    <fieldset class="field"><legend>Vitals: show when each reading was taken as</legend>
+      {% for key, label, example in [("ago", "Time since the check", "2h 15m ago"), ("date", "Date and time of the check", "Today 9:15 AM"), ("both", "Both", "Today 9:15 AM · 2h 15m ago")] %}
+      <label class="check-row"><input type="radio" name="vitals_time_display" value="{{ key }}" {% if settings.vitals_time_display == key %}checked{% endif %}> <span><strong>{{ label }}</strong> — “{{ example }}”</span></label>
+      {% endfor %}
+      <span class="hint">Applies to the vitals on the home screen and the dash.</span>
+    </fieldset>
+  </section>
+
   <section class="card">
     <h2>Open access</h2>
     <label class="field"><span class="label">Open window (hours)</span>
@@ -72,6 +82,7 @@
     <h2>Dash display</h2>
     <p class="sub">Any screen can show the live dash at <a href="/dash">/dash</a> (no password, like the home screen). To also push reminders to an external dashboard (Home Assistant, Node-RED, TRMNL...), configure a webhook. See <code>docs/DASH.md</code>.</p>
     <label class="check-row"><input type="checkbox" name="dash_sound" value="1" {% if settings.flag("dash_sound") %}checked{% endif %}> <span>Allow the built-in dash to chime on new alerts</span></label>
+    <label class="check-row"><input type="checkbox" name="dash_diaper_buttons" value="1" {% if settings.flag("dash_diaper_buttons") %}checked{% endif %}> <span>Show <strong>Wet</strong>, <strong>Dirty</strong> and <strong>Both</strong> buttons on the dash, so a diaper change can be logged from the dash screen with one tap</span></label>
     <label class="check-row"><input type="checkbox" name="dash_webhook_enabled" value="1" {% if settings.flag("dash_webhook_enabled") %}checked{% endif %}> <span>POST every reminder/alert to a webhook</span></label>
     <label class="field"><span class="label">Webhook URL</span>
       <input type="url" name="dash_webhook_url" value="{{ settings['dash_webhook_url'] }}" placeholder="http://homeassistant.local:8123/api/webhook/lilypad-xyz"></label>

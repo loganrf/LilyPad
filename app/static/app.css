@@ -289,7 +289,8 @@ main { max-width: 1100px; margin: 0 auto; padding: 12px 16px 24px; }
 .vital:last-child { border-bottom: 0; }
 .vital-name { font-weight: 600; min-width: 7em; }
 .vital-value { font-size: 1.2rem; font-weight: 700; white-space: nowrap; }
-.vital-when { color: var(--muted); font-size: 0.85rem; margin-left: auto; white-space: nowrap; }
+/* Date and "ago" each stay on one line; with both shown they wrap between them. */
+.vital-when { color: var(--muted); font-size: 0.85rem; margin-left: auto; text-align: right; }
 
 /* --- pills -------------------------------------------------------------------- */
 .pill {
