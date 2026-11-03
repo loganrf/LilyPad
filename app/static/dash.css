@@ -82,6 +82,18 @@ main.dash-grid {
 .dash-detail:empty { display: none; }
 .dash-flag { margin-top: 0.5em; color: var(--alert); background: var(--alert-bg); padding: 0.4em 0.6em; border-radius: 10px; font-size: 0.85em; line-height: 1.35; }
 
+/* One-tap diaper buttons (Settings → Dash display), three abreast in the
+   narrowest tile. The line under them confirms the entry and offers Undo. */
+.dash-log { margin-top: 0.6em; }
+.dash-log-btns { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.4em; margin: 0; }
+.dash-log .dash-log-btn { font-size: 0.9em; font-weight: 700; min-height: 52px; padding: 4px 6px; color: var(--text); }
+.dash-log-btn:disabled { opacity: 0.6; cursor: progress; }
+.dash-log-msg { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4em 0.6em; margin-top: 0.5em; font-size: 0.85em; line-height: 1.3; color: var(--text-2); }
+.dash-log-msg:empty { display: none; }
+.dash-log-msg.error { color: var(--alert); }
+.dash-log-msg .dash-btn { font-size: 0.9em; min-height: 40px; }
+.dash-log-msg a.dash-btn { display: inline-flex; align-items: center; text-decoration: none; }
+
 /* Last 24 hours: always two columns of figures; units are set smaller so
    "3h 07m" or "10.2 oz" fit the narrowest tile. */
 .dash-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.4em; }

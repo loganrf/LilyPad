@@ -588,4 +588,5 @@ def privacy(request: Request, conn: sqlite3.Connection = Depends(get_conn)):
 @router.get("/dash")
 def dash(request: Request, conn: sqlite3.Connection = Depends(get_conn)) -> Response:
     settings = load_settings(request, conn)
-    return render(request, conn, "dash.html", dash_sound=settings.flag("dash_sound"))
+    return render(request, conn, "dash.html", dash_sound=settings.flag("dash_sound"),
+                  dash_diaper_buttons=settings.flag("dash_diaper_buttons"))

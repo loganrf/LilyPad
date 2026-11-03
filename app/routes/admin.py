@@ -143,6 +143,8 @@ async def settings_save(request: Request, conn: sqlite3.Connection = Depends(get
     if base_url and not base_url.lower().startswith(("http://", "https://")):
         errors.append("Base URL must start with http:// or https://.")
     updates["base_url"] = base_url
+    display = form.text("vitals_time_display", 10)
+    updates["vitals_time_display"] = display if display in settings_store.VITALS_TIME_DISPLAYS else "ago"
 
     updates["ntfy_enabled"] = "1" if form.flag("ntfy_enabled") else "0"
     updates["ntfy_server"] = form.text("ntfy_server", 300).rstrip("/") or "https://ntfy.sh"
@@ -167,6 +169,7 @@ async def settings_save(request: Request, conn: sqlite3.Connection = Depends(get
         errors.append("Set a webhook URL to enable the dash webhook.")
     updates["dash_webhook_url"] = hook
     updates["dash_sound"] = "1" if form.flag("dash_sound") else "0"
+    updates["dash_diaper_buttons"] = "1" if form.flag("dash_diaper_buttons") else "0"
 
     updates["dash_clock_enabled"] = "1" if form.flag("dash_clock_enabled") else "0"
     clocks = "\n".join(dash_clock.parse_addresses(form.text("dash_clock_urls", 2000)))

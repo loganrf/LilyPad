@@ -22,6 +22,8 @@ DEFAULTS: dict[str, str] = {
     "caregivers": "",
     "open_window_hours": "48",
     "base_url": "",
+    # How the home screen and the dash show when each vital was last measured.
+    "vitals_time_display": "ago",  # ago | date | both
     # ntfy
     "ntfy_enabled": "0",
     "ntfy_server": "https://ntfy.sh",
@@ -36,6 +38,7 @@ DEFAULTS: dict[str, str] = {
     "dash_webhook_url": "",
     "dash_webhook_headers": "",
     "dash_sound": "1",
+    "dash_diaper_buttons": "0",
     # Dash LED clocks (github.com/loganrf/dash)
     "dash_clock_enabled": "0",
     "dash_clock_urls": "",
@@ -53,6 +56,8 @@ SECRET_KEYS = frozenset(
     {"ntfy_token", "ntfy_password", "dash_webhook_headers", "dash_clock_headers",
      "admin_password_hash", "secret_key"}
 )
+
+VITALS_TIME_DISPLAYS = ("ago", "date", "both")
 
 OPEN_WINDOW_MIN_HOURS = 24
 OPEN_WINDOW_MAX_HOURS = 24 * 30
@@ -127,6 +132,11 @@ class Settings:
     def notify_detail(self) -> str:
         value = self["notify_detail"]
         return value if value in ("minimal", "standard", "detailed") else "standard"
+
+    @property
+    def vitals_time_display(self) -> str:
+        value = self["vitals_time_display"]
+        return value if value in VITALS_TIME_DISPLAYS else "ago"
 
     @property
     def base_url(self) -> str:

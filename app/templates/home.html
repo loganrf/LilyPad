@@ -121,6 +121,7 @@
 <section class="card card-vitals" aria-labelledby="vitals-h">
   <h2 id="vitals-h">Vitals</h2>
   {% if snap.vitals %}
+  {% set vitals_time = settings.vitals_time_display %}
   <ul class="vital-list">
     {% for v in snap.vitals %}
     <li class="vital status-{{ v.status or 'none' }}">
@@ -128,7 +129,11 @@
       {% if v.value is not none %}
         <span class="vital-value">{{ v.display }}</span>
         {% if v.status == "alert" %}<span class="pill status-alert">&#9888; alert</span>{% elif v.status == "watch" %}<span class="pill status-watch">outside expected</span>{% elif v.status == "ok" %}<span class="pill status-ok">&#10003; ok</span>{% endif %}
-        <span class="vital-when" data-ago="{{ v.measured_at }}">{{ v.measured_at|ago(now) }}</span>
+        <span class="vital-when">
+          {%- if vitals_time != "ago" %}<span class="nowrap">{{ v.measured_at|dt(tz, now) }}</span>{% endif %}
+          {%- if vitals_time == "both" %} · {% endif %}
+          {%- if vitals_time != "date" %}<span class="nowrap" data-ago="{{ v.measured_at }}">{{ v.measured_at|ago(now) }}</span>{% endif -%}
+        </span>
       {% else %}
         <span class="muted">not logged yet</span>
       {% endif %}
