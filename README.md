@@ -26,7 +26,7 @@ last eat?"** Runs as a single Docker container on your home network.
   webhook for Home Assistant and friends.
 - **Reports & exports** (password protected): day-by-day 24-hour charts,
   feed intervals, stool patterns, vitals trends, a printable pediatrician
-  summary, CSV/JSON/SQLite exports.
+  summary, CSV/JSON/SQLite exports. [See an example](#example-report).
 - **Night mode**: a dim red theme for the 3 a.m. feed, per device.
 - **Installable app**: put LilyPad (and the dash) on your home screen. It
   opens in its own window, with shortcuts for logging and a friendly
@@ -40,6 +40,31 @@ last eat?"** Runs as a single Docker container on your home network.
 > port-forward it.
 
 LilyPad is a record-keeping tool, not a medical device or medical advice.
+
+## Example report
+
+These pictures show a 7-day report for a two-week-old baby. All of the
+data is sample data. Open the report from **Admin → Report**.
+
+![Report summary with daily averages for feeds, gaps and diapers, then a 24-hour chart with one row per day. A tooltip on one feed shows "12:38 PM · Breast (both) · 22m".](docs/images/report-summary.png)
+
+**Summary and day by day.** Each row is one day, from midnight to
+midnight. Blue bars are feeds, green dots are wet diapers and orange
+squares are dirty diapers. Point to a mark, or tap it, to see its details.
+
+![Temperature chart over 7 days. The expected range is shaded green and red lines mark the alert limits at 97.0 °F and 100.4 °F. One reading of 100.5 °F is red, with a tooltip.](docs/images/report-vitals.png)
+
+**Vitals trends.** There is one chart for each vital. The green band is
+the expected range and the red lines are the alert limits. A yellow dot
+is outside the expected range. A red dot is at or beyond an alert limit.
+
+![The printed report. Page 1 has the summary, the day-by-day chart and a table of daily totals. The last page has the questions for the pediatrician and all notes.](docs/images/report-print.png)
+
+**Printed report.** **Print / save PDF** removes the menus and buttons.
+Page 1 has the summary and the daily totals. The last page lists your
+questions for the pediatrician (questions you discussed are crossed out)
+and all notes. The other pages show feeding details, stool colours and
+consistency, routines and all vitals.
 
 ---
 
@@ -218,5 +243,6 @@ app/
   db.py            schema and migrations
   templates/, static/   (templates/sw.js + static/pwa.js: installable app / offline page)
 docs/              privacy & security, notifications, dash integrations, installing as an app
+  images/          README screenshots (sample data)
 tests/             pytest suite
 ```
