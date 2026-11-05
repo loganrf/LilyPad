@@ -472,10 +472,20 @@ input::placeholder, textarea::placeholder { color: var(--muted); }
   main { max-width: none; padding: 0; }
   .card { border: 0; padding: 0; margin: 0 0 14pt; break-inside: avoid; }
   .chart { min-width: 0; }
-  details { display: block; }
-  details > summary { display: none; }
-  details > * { display: block !important; }
+  /* The Vitals card is often taller than a page. Let it break between and
+     inside vitals, but keep each vital's heading, summary and chart together. */
+  .card.report-vitals { break-inside: auto; }
+  .card h2, .vital-report > h3, .vital-report > .sub { break-after: avoid; }
+  .chart-wrap, .table tr { break-inside: avoid; }
+  /* app.js opens every <details> before printing and closes it again after.
+     Its label has no use on paper. */
+  details > summary { display: none !important; }
   a { color: inherit; text-decoration: none; }
+}
+/* Without JavaScript: show closed <details> content where the browser supports
+   ::details-content. Kept apart so other browsers keep the print rules above. */
+@media print {
+  details::details-content { content-visibility: visible; }
 }
 
 /* Phones: an entry's time goes above its title so the text gets the width. */

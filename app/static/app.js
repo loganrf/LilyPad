@@ -121,6 +121,24 @@
     });
   }
 
+  // Print collapsed sections open (the report's "All readings" tables). CSS
+  // cannot do this in Chromium: the content of a closed <details> stays hidden
+  // whatever its children's display is. The Print button and Ctrl/Cmd+P both
+  // fire these events. After printing, close only the sections opened here.
+  function bindPrintDetails() {
+    var opened = [];
+    window.addEventListener("beforeprint", function () {
+      document.querySelectorAll("details:not([open])").forEach(function (d) {
+        d.open = true;
+        opened.push(d);
+      });
+    });
+    window.addEventListener("afterprint", function () {
+      opened.forEach(function (d) { d.open = false; });
+      opened = [];
+    });
+  }
+
   // A form's Save bar is pinned just under the (sticky) top bar, whose height
   // changes as it wraps on narrow screens.
   function trackTopbar() {
@@ -261,6 +279,7 @@
     });
 
     bindTooltips();
+    bindPrintDetails();
     bindLive();
   });
 })();
